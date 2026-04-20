@@ -1,0 +1,121 @@
+import React from 'react'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import { SidebarProvider } from './contexts/SidebarContext'
+import LoginPage from './pages/auth/LoginPage'
+import RegisterPage from './pages/auth/RegisterPage'
+import Dashboard from './pages/Dashboard'
+import Layout from './components/Layout/Layout'
+import ProtectedRoute from './components/Auth/ProtectedRoute'
+import Products from './pages/Products/Products'
+import StockMovements from './pages/StockMovements/StockMovements'
+import Alerts from './pages/Alerts/Alerts'
+import Suppliers from './pages/Suppliers/Suppliers'
+import Orders from './pages/Orders/Orders'
+import Reports from './pages/Reports/Reports'
+import Settings from './pages/Settings/Settings'
+import Admin from './pages/Admin/Admin'
+import Forecasting from './pages/Forecasting/Forecasting'
+import Losses from './pages/Losses/Losses'
+import Categories from './pages/Categories/Categories'
+
+function App() {
+  return (
+    <AuthProvider>
+      <SidebarProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/produits" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Products />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/mouvements-stock" element={
+              <ProtectedRoute>
+                <Layout>
+                  <StockMovements />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/alertes" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Alerts />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/fournisseurs" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Suppliers />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/commandes" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Orders />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/rapports" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Reports />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/parametres" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Settings />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Admin />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/previsions" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Forecasting />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/pertes" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Losses />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/categories" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Categories />
+                </Layout>
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </Router>
+      </SidebarProvider>
+    </AuthProvider>
+  )
+}
+
+export default App

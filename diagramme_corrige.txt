@@ -1,0 +1,256 @@
+classDiagram
+    class Entreprise {
+        - idEntreprise : int
+        - nom : String
+        - adresse : String
+        - telephone : String
+        - email : String
+        - date_creation : Date
+        + ajouterEntreprise()
+        + modifierEntreprise()
+        + supprimerEntreprise()
+    }
+
+    class Role {
+        - idRole : int
+        - codeRole : String
+        - label : String
+        - couleur : String
+        - icone : String
+        + definirRole()
+        + modifierRole()
+        + getPermissions()
+    }
+
+    class Permission {
+        - idPermission : int
+        - module : String
+        - action : String
+        - description : String
+        + definirPermission()
+    }
+
+    class RolePermission {
+        - idRole : int
+        - idPermission : int
+        - niveau : String
+        + assignerPermission()
+        + retirerPermission()
+    }
+
+    class Utilisateur {
+        - idUser : int
+        - nom : String
+        - email : String
+        - motDePasse : String
+        - derniere_connexion : DateTime
+        - est_actif : boolean
+        - idRole : int
+        + seConnecter()
+        + seDeconnecter()
+        + consulterTableauBord()
+        + gererProduits()
+        + consulterRapport()
+        + aPermission(module, action)
+    }
+
+    class Categorie {
+        - idCategorie : int
+        - nomCategorie : String
+        - description : String
+        + ajouterCategorie()
+        + modifierCategorie()
+    }
+
+    class Fournisseur {
+        - idFournisseur : int
+        - nom : String
+        - telephone : String
+        - email : String
+        - adresse : String
+        + ajouterFournisseur()
+        + modifierFournisseur()
+        + supprimerFournisseur()
+    }
+
+    class Produit {
+        - idProduit : int
+        - nom : String
+        - description : String
+        - prixVente : double
+        - prixAchat : double
+        - stockActuel : int
+        - seuilAlerte : int
+        - idFournisseur : int
+        - idCategorie : int
+        - image : String
+        + ajouterProduit()
+        + modifierProduit()
+        + mettreAJourStock()
+        + verifierSeuilAlerte()
+        + calculerRotation()
+        + supprimerProduit()
+    }
+
+    class Commande {
+        - idCommande : int
+        - dateCommande : Date
+        - montantTotal : double
+        - numero_commande : String
+        - mode_paiement : String
+        - notes : String
+        - idClient : int
+        - statut : String
+        + creerCommande()
+        + calculerTotal()
+        + validerCommande()
+        + livrerCommande()
+    }
+
+    class LigneCommande {
+        - idLigne : int
+        - idCommande : int
+        - idProduit : int
+        - quantite : int
+        - prixUnitaire : double
+        - remise : double
+        + calculerSousTotal()
+    }
+
+    class CommandeFournisseur {
+        - idCommandeFournisseur : int
+        - dateCommande : Date
+        - statut : String
+        - numero_commande : String
+        - date_livraison_prevue : Date
+        - montant_total : double
+        - idFournisseur : int
+        + creerCommandeFournisseur()
+        + recevoirCommande()
+        + modifierCommande()
+        + annulerCommande()
+    }
+
+    class LigneFournisseur {
+        - idLigneFournisseur : int
+        - idCommandeFournisseur : int
+        - idProduit : int
+        - quantite : int
+        - prixActuel : double
+        - prixAchat : double
+        + calculerSousTotal()
+    }
+
+    class MouvementStock {
+        - idMouvement : int
+        - idProduit : int
+        - idUtilisateur : int
+        - quantite : int
+        - date : Date
+        - type : String
+        - reference : String
+        + enregistrerMouvement()
+        + annulerMouvement()
+    }
+
+    class Perte {
+        - idPerte : int
+        - idProduit : int
+        - idUtilisateur : int
+        - cause : String
+        - quantite : int
+        - impact_financier : double
+        - date : Date
+        - conseil_prevention : String
+        + enregistrerPerte()
+        + analyserImpact()
+    }
+
+    class AlerteStock {
+        - idAlerte : int
+        - idProduit : int
+        - typeAlerte : String
+        - message : String
+        - dateAlerte : Date
+        - statut : String
+        - date_traitement : Date
+        - priorite : String
+        - estLue : boolean
+        + declencherAlerte()
+        + marquerCommeLue()
+        + envoyerNotification()
+        + traiterAlerte()
+    }
+
+    class Prevision {
+        - idPrevision : int
+        - idProduit : int
+        - periode : String
+        - quantitePrevue : int
+        - date_debut : Date
+        - date_fin : Date
+        - methode_calcul : String
+        - fiabilite : double
+        + genererPrevision()
+        + recalculer()
+        + analyserTendance()
+        + comparerRealite()
+    }
+
+    class RecommandationAchat {
+        - idRecommandation : int
+        - idProduit : int
+        - date_recommandation : Date
+        - quantite_conseillee : int
+        - date_limite_commande : Date
+        - justification : String
+        - statut : String
+        - priorite : String
+        + genererRecommandation()
+        + validerRecommandation()
+        + ignorerRecommandation()
+    }
+
+    class Inscription {
+        - idInscription : int
+        - nom : String
+        - email : String
+        - motDePasse : String
+        - roleDemande : String
+        - date : Date
+        - statut : String
+        + soumettreInscription()
+        + validerInscription()
+        + rejeterInscription()
+    }
+
+    -- Relations
+
+    Entreprise "1" -- "0..*" Utilisateur
+    Entreprise "1" -- "0..*" Produit
+    Entreprise "1" -- "0..*" Fournisseur
+    
+    Role "1" -- "0..*" Utilisateur
+    Role "0..*" -- "0..*" RolePermission
+    Permission "0..*" -- "0..*" RolePermission
+    
+    Categorie "1" -- "0..*" Produit
+    
+    Fournisseur "1" -- "0..*" CommandeFournisseur
+    Fournisseur "1" -- "0..*" Produit
+    
+    CommandeFournisseur "1" -- "1..*" LigneFournisseur
+    LigneFournisseur "0..*" -- "1" Produit
+    
+    Commande "1" -- "1..*" LigneCommande
+    LigneCommande "0..*" -- "1" Produit
+    
+    Produit "1" -- "0..*" MouvementStock
+    Produit "1" -- "0..*" AlerteStock
+    Produit "1" -- "0..*" Prevision
+    Produit "1" -- "0..*" RecommandationAchat
+    Produit "1" -- "0..*" Perte
+    
+    Utilisateur "1" -- "0..*" MouvementStock
+    Utilisateur "1" -- "0..*" AlerteStock
+    Utilisateur "1" -- "0..*" Perte

@@ -1,0 +1,1846 @@
+import { useState, useEffect } from "react";
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+/* ── Couleurs ── */
+const P="#4318FF", P2="#7551FF", BG="#F4F7FE", W="#FFFFFF";
+const TXT="#2B3674", MUT="#A3AED0", BOR="#E9EDF7";
+const GR="#05CD99", RD="#EE5D50", OR="#FFB547";
+const GRAD=`linear-gradient(160deg,#4318FF 0%,#7551FF 55%,#5E35B1 100%)`;
+const f="'DM Sans',system-ui,sans-serif";
+
+const ROLES={
+  admin:{label:"Administrateur",color:"#4318FF",icon:"admin_panel_settings"},
+  gerant:{label:"Gérant",color:"#7551FF",icon:"bar_chart"},
+  gestionnaire:{label:"Gestionnaire",color:"#05CD99",icon:"inventory_2"},
+};
+
+/* ── Icône ── */
+const Ic=({n,s=20,c="inherit"})=>(
+  <span className="material-symbols-rounded" style={{fontSize:s,color:c,lineHeight:1,fontVariationSettings:"'FILL' 0,'wght' 400"}}>{n}</span>
+);
+
+/* ── Toast notification ── */
+const Toast=({msg,type="success"})=>(
+  <div style={{position:"fixed",bottom:24,right:24,zIndex:9999,
+    background:type==="error"?RD:GR,color:"#fff",borderRadius:14,
+    padding:"14px 22px",display:"flex",alignItems:"center",gap:10,
+    boxShadow:`0 8px 24px ${type==="error"?RD:GR}66`,fontFamily:f,fontSize:14,fontWeight:700,
+    animation:"slideIn .3s ease"}}>
+    <Ic n={type==="error"?"error":"check_circle"} s={20} c="#fff"/>{msg}
+  </div>
+);
+
+/* ── Modal ── */
+const Modal=({title,children,onClose,w=480})=>(
+  <div style={{position:"fixed",inset:0,background:"rgba(11,20,55,.6)",display:"flex",
+    alignItems:"center",justifyContent:"center",zIndex:9000,backdropFilter:"blur(3px)"}}
+    onClick={onClose}>
+    <div onClick={e=>e.stopPropagation()} style={{background:W,borderRadius:22,padding:26,
+      width:w,maxWidth:"95vw",maxHeight:"90vh",overflowY:"auto",
+      boxShadow:"0 24px 60px rgba(11,20,55,.3)",fontFamily:f}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+        <b style={{fontSize:16,color:TXT}}>{title}</b>
+        <div onClick={onClose} style={{width:32,height:32,borderRadius:"50%",background:BG,
+          display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",border:`1px solid ${BOR}`}}>
+          <Ic n="close" s={16} c={MUT}/>
+        </div>
+      </div>
+      {children}
+    </div>
+  </div>
+);
+
+/* ── Confirm delete ── */
+const Confirm=({msg,onOk,onCancel})=>(
+  <Modal title="Confirmer la suppression" onClose={onCancel} w={360}>
+    <div style={{textAlign:"center",padding:"8px 0 20px"}}>
+      <div style={{width:60,height:60,borderRadius:"50%",background:RD+"18",
+        display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}>
+        <Ic n="delete_forever" s={28} c={RD}/>
+      </div>
+      <div style={{fontSize:14,color:TXT,marginBottom:6}}>{msg}</div>
+      <div style={{fontSize:12,color:MUT}}>Cette action est irréversible.</div>
+    </div>
+    <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+      <Btn col={RD} ic="delete" onClick={onOk}>Supprimer</Btn>
+      <Btn v="outline" onClick={onCancel}>Annuler</Btn>
+    </div>
+  </Modal>
+);
+
+/* ── Bouton ── */
+const Btn=({children,onClick,v="fill",col=P,full,sm,ic,disabled,style={}})=>(
+  <button disabled={disabled} onClick={onClick} style={{
+    background:v==="fill"?col:v==="ghost"?col+"12":"transparent",
+    color:v==="fill"?"#fff":col,
+    border:`2px solid ${v==="outline"?col:"transparent"}`,
+    borderRadius:11,padding:sm?"6px 13px":full?"13px":"10px 20px",
+    fontSize:sm?12:14,fontWeight:700,cursor:disabled?"not-allowed":"pointer",
+    display:"inline-flex",alignItems:"center",gap:6,
+    width:full?"100%":"auto",justifyContent:"center",
+    fontFamily:f,opacity:disabled?.5:1,
+    boxShadow:v==="fill"?`0 4px 14px ${col}44`:"none",...style,
+  }}>{ic&&<Ic n={ic} s={sm?14:16} c="inherit"/>}{children}</button>
+);
+
+/* ── Input contrôlé ── */
+const Inp=({label,value,set,ph,type="text",ic,err,req,hint})=>(
+  <div style={{marginBottom:15}}>
+    {label&&<div style={{fontSize:12,fontWeight:700,color:TXT,marginBottom:5,fontFamily:f}}>
+      {label}{req&&<span style={{color:RD}}> *</span>}
+    </div>}
+    <div style={{position:"relative"}}>
+      {ic&&<span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",display:"flex",pointerEvents:"none"}}>
+        <Ic n={ic} s={16} c={err?RD:MUT}/>
+      </span>}
+      <input value={value||""} onChange={e=>set(e.target.value)} placeholder={ph} type={type}
+        style={{width:"100%",padding:ic?"11px 12px 11px 38px":"11px 14px",
+          border:`1.5px solid ${err?RD:BOR}`,borderRadius:11,fontSize:14,
+          color:TXT,background:W,outline:"none",boxSizing:"border-box",fontFamily:f,
+          transition:"border .15s"}}
+        onFocus={e=>e.target.style.borderColor=P}
+        onBlur={e=>e.target.style.borderColor=err?RD:BOR}/>
+    </div>
+    {err&&<div style={{fontSize:11,color:RD,marginTop:3}}>{err}</div>}
+    {hint&&!err&&<div style={{fontSize:11,color:MUT,marginTop:3}}>{hint}</div>}
+  </div>
+);
+
+/* ── Select contrôlé ── */
+const Sel=({label,value,set,opts=[],req})=>(
+  <div style={{marginBottom:15}}>
+    {label&&<div style={{fontSize:12,fontWeight:700,color:TXT,marginBottom:5,fontFamily:f}}>
+      {label}{req&&<span style={{color:RD}}> *</span>}
+    </div>}
+    <div style={{position:"relative"}}>
+      <select value={value||""} onChange={e=>set(e.target.value)}
+        style={{width:"100%",padding:"11px 36px 11px 14px",border:`1.5px solid ${BOR}`,
+          borderRadius:11,fontSize:14,color:value?TXT:MUT,background:W,
+          fontFamily:f,outline:"none",appearance:"none",cursor:"pointer",
+          transition:"border .15s"}}
+        onFocus={e=>e.target.style.borderColor=P}
+        onBlur={e=>e.target.style.borderColor=BOR}>
+        <option value="" disabled>Choisir...</option>
+        {opts.map(o=><option key={o} value={o}>{o}</option>)}
+      </select>
+      <span style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}>
+        <Ic n="expand_more" s={18} c={MUT}/>
+      </span>
+    </div>
+  </div>
+);
+
+/* ── Chip ── */
+const Chip=({children,col=P})=>(
+  <span style={{background:col+"18",color:col,borderRadius:7,padding:"3px 9px",
+    fontSize:11,fontWeight:700,display:"inline-block",whiteSpace:"nowrap",fontFamily:f}}>{children}</span>
+);
+
+/* ── KPI card ── */
+const KPI=({ic,label,value,col=P,trend,up})=>(
+  <div style={{background:W,borderRadius:18,padding:"18px",
+    boxShadow:"0 4px 24px rgba(112,144,176,.1)",border:`1px solid ${BOR}`,fontFamily:f}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+      <div style={{width:42,height:42,borderRadius:11,background:col+"18",
+        display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <Ic n={ic} s={20} c={col}/>
+      </div>
+      {trend&&<span style={{fontSize:11,fontWeight:700,color:up?GR:RD,
+        background:up?GR+"18":RD+"18",borderRadius:6,padding:"2px 7px"}}>{up?"↑":"↓"}{trend}</span>}
+    </div>
+    <div style={{fontSize:24,fontWeight:900,color:TXT,letterSpacing:-1}}>{value}</div>
+    <div style={{fontSize:12,color:MUT,marginTop:2}}>{label}</div>
+  </div>
+);
+
+/* ── Table helpers ── */
+const THead=({cols})=>(
+  <thead><tr style={{borderBottom:`1px solid ${BOR}`}}>
+    {cols.map(c=><th key={c} style={{padding:"9px 13px",textAlign:"left",fontSize:10,
+      fontWeight:700,color:MUT,fontFamily:f,textTransform:"uppercase",
+      letterSpacing:.7,whiteSpace:"nowrap",background:BG}}>{c}</th>)}
+  </tr></thead>
+);
+const TRow=({cells,i=0})=>(
+  <tr style={{borderBottom:`1px solid ${BOR}88`,background:i%2===0?W:"#FAFBFF"}}>
+    {cells.map((c,j)=><td key={j} style={{padding:"10px 13px",fontSize:13,fontFamily:f,color:TXT}}>{c}</td>)}
+  </tr>
+);
+
+/* ── Card ── */
+const Card=({children,style={}})=>(
+  <div style={{background:W,borderRadius:18,padding:22,
+    boxShadow:"0 4px 24px rgba(112,144,176,.08)",border:`1px solid ${BOR}`,fontFamily:f,...style}}>{children}</div>
+);
+
+/* ── Section header ── */
+const SH=({title,ic,action})=>(
+  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+      {ic&&<Ic n={ic} s={19} c={P}/>}
+      <b style={{fontSize:15,color:TXT,fontFamily:f}}>{title}</b>
+    </div>
+    {action}
+  </div>
+);
+
+/* ── Sidebar ── */
+const Sidebar=({active,set,role,logout,menus})=>(
+  <div style={{width:234,minHeight:"100vh",background:GRAD,display:"flex",flexDirection:"column",flexShrink:0}}>
+    <div style={{padding:"24px 20px 16px",borderBottom:"1px solid rgba(255,255,255,.15)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{width:36,height:36,borderRadius:11,background:"rgba(255,255,255,.2)",
+          border:"1px solid rgba(255,255,255,.3)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Ic n="inventory_2" s={19} c="#fff"/>
+        </div>
+        <div>
+          <div style={{fontSize:15,fontWeight:900,color:"#fff",fontFamily:f}}>STOCKSHOW</div>
+          <div style={{fontSize:9,color:"rgba(255,255,255,.6)",fontFamily:f}}>PME SYSTÈME</div>
+        </div>
+      </div>
+    </div>
+    <div style={{margin:"11px 12px 4px",padding:"9px 11px",background:"rgba(255,255,255,.12)",
+      borderRadius:11,border:"1px solid rgba(255,255,255,.2)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:9}}>
+        <div style={{width:34,height:34,borderRadius:"50%",background:"rgba(255,255,255,.25)",
+          border:"2px solid rgba(255,255,255,.4)",display:"flex",alignItems:"center",justifyContent:"center",
+          color:"#fff",fontWeight:800,fontSize:14,fontFamily:f,flexShrink:0}}>
+          {ROLES[role]?.label[0]}
+        </div>
+        <div>
+          <div style={{fontSize:11,fontWeight:700,color:"#fff",fontFamily:f}}>{ROLES[role]?.label}</div>
+          <div style={{fontSize:9,color:"rgba(255,255,255,.6)",fontFamily:f}}>Connecté</div>
+        </div>
+      </div>
+    </div>
+    <nav style={{flex:1,padding:"6px 8px",overflowY:"auto"}}>
+      {menus.map(m=>{
+        const on=active===m.id;
+        return <div key={m.id} onClick={()=>set(m.id)} style={{
+          display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:11,
+          cursor:"pointer",marginBottom:2,
+          background:on?"rgba(255,255,255,.22)":"transparent",
+          border:on?"1px solid rgba(255,255,255,.32)":"1px solid transparent",
+          transition:"all .14s"}}>
+          {m.icon&&<Ic n={m.icon} s={17} c={on?"#fff":"rgba(255,255,255,.65)"}/>}
+          <span style={{fontSize:12,fontWeight:on?700:500,fontFamily:f,
+            color:on?"#fff":"rgba(255,255,255,.65)",flex:1}}>{m.label}</span>
+          {m.badge>0&&<span style={{background:RD,color:"#fff",borderRadius:7,
+            fontSize:10,fontWeight:800,padding:"1px 6px"}}>{m.badge}</span>}
+        </div>;
+      })}
+    </nav>
+    <div style={{padding:"10px 12px 14px",borderTop:"1px solid rgba(255,255,255,.15)"}}>
+      <div onClick={logout} style={{display:"flex",alignItems:"center",gap:9,
+        padding:"9px 11px",borderRadius:11,cursor:"pointer",
+        background:"rgba(238,93,80,.2)",border:"1px solid rgba(238,93,80,.3)"}}>
+        <Ic n="logout" s={17} c="#FCA5A5"/>
+        <span style={{fontSize:12,fontWeight:700,color:"#FCA5A5",fontFamily:f}}>Se déconnecter</span>
+      </div>
+    </div>
+  </div>
+);
+
+/* ── Topbar ── */
+const Topbar=({title,sub,searchQuery,setSearchQuery,showNotifications,setShowNotifications})=>(
+  <div style={{height:66,background:W,borderBottom:`1px solid ${BOR}`,
+    display:"flex",alignItems:"center",justifyContent:"space-between",
+    padding:"0 28px",flexShrink:0,fontFamily:f}}>
+    <div>
+      <div style={{fontSize:19,fontWeight:900,color:TXT}}>{title}</div>
+      {sub&&<div style={{fontSize:11,color:MUT}}>{sub}</div>}
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:12}}>
+      <div style={{display:"flex",alignItems:"center",gap:7,padding:"8px 14px",
+        background:BG,borderRadius:50,border:`1px solid ${BOR}`,cursor:"pointer"}}>
+        <Ic n="search" s={15} c={searchQuery?TXT:MUT}/>
+        <input 
+          type="text" 
+          placeholder="Rechercher..." 
+          value={searchQuery||""}
+          onChange={e=>setSearchQuery(e.target.value)}
+          style={{fontSize:12,color:TXT,background:"transparent",border:"none",outline:"none",width:"120px"}}
+        />
+      </div>
+      <div onClick={()=>setShowNotifications(!showNotifications)} style={{position:"relative",width:38,height:38,borderRadius:"50%",
+        background:BG,display:"flex",alignItems:"center",justifyContent:"center",
+        cursor:"pointer",border:`1px solid ${BOR}`}}>
+        <Ic n="notifications" s={17} c={TXT}/>
+        <span style={{position:"absolute",top:7,right:8,width:7,height:7,
+          borderRadius:"50%",background:RD,border:"2px solid #fff"}}/>
+      </div>
+    </div>
+  </div>
+);
+
+/* ── Layout ── */
+const Layout=({page,setPage,role,logout,menus,title,sub,children,toast,searchQuery,setSearchQuery,showNotifications,setShowNotifications})=>(
+  <div style={{display:"flex",minHeight:"100vh",background:BG,fontFamily:f}}>
+    <Sidebar active={page} set={setPage} role={role} logout={logout} menus={menus}/>
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <Topbar title={title} sub={sub} searchQuery={searchQuery} setSearchQuery={setSearchQuery} showNotifications={showNotifications} setShowNotifications={setShowNotifications}/>
+      <main style={{flex:1,padding:24,overflowY:"auto"}}>{children}</main>
+    </div>
+    {toast&&<Toast msg={toast.msg} type={toast.type}/>}
+    {showNotifications && (
+      <div style={{position:"fixed",top:80,right:28,width:320,background:W,borderRadius:16,
+        boxShadow:"0 8px 32px rgba(0,0,0,.15)",border:`1px solid ${BOR}`,zIndex:8000,fontFamily:f}}>
+        <div style={{padding:16,borderBottom:`1px solid ${BOR}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <b style={{fontSize:14,color:TXT}}>Notifications</b>
+          <div onClick={()=>setShowNotifications(false)} style={{cursor:"pointer",padding:4}}>
+            <Ic n="close" s={16} c={MUT}/>
+          </div>
+        </div>
+        <div style={{padding:16}}>
+          <div style={{textAlign:"center",padding:"20px 0",color:MUT,fontSize:12}}>
+            <Ic n="notifications_off" s={32} c={MUT}/>
+            <div style={{marginTop:8}}>Aucune notification</div>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+);
+
+/* ── Panneau gauche violet ── */
+const LeftPanel=()=>(
+  <div style={{width:"43%",minHeight:"100vh",flexShrink:0,background:GRAD,
+    display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+    padding:40,position:"relative",overflow:"hidden"}}>
+    <div style={{position:"absolute",top:-70,right:-70,width:260,height:260,
+      borderRadius:"50%",background:"rgba(255,255,255,.06)"}}/>
+    <div style={{position:"absolute",bottom:-50,left:-50,width:200,height:200,
+      borderRadius:"50%",background:"rgba(255,255,255,.05)"}}/>
+    <div style={{textAlign:"center",zIndex:1}}>
+      <div style={{width:84,height:84,margin:"0 auto 20px",background:"rgba(255,255,255,.15)",
+        borderRadius:24,display:"flex",alignItems:"center",justifyContent:"center",
+        border:"2px solid rgba(255,255,255,.25)"}}>
+        <Ic n="inventory_2" s={42} c="#fff"/>
+      </div>
+      <div style={{fontSize:30,fontWeight:900,color:"#fff",letterSpacing:-1}}>STOCKSHOW</div>
+      <div style={{fontSize:13,color:"rgba(255,255,255,.5)",marginTop:7}}>Plateforme intelligente pour PME</div>
+      <div style={{marginTop:36,display:"flex",flexDirection:"column",gap:11,textAlign:"left"}}>
+        {[["inventory","Gestion des stocks en temps réel"],
+          ["notifications_active","Alertes automatiques intelligentes"],
+          ["insights","Prévisions et aide à la décision"]].map(([ic,txt])=>(
+          <div key={ic} style={{display:"flex",alignItems:"center",gap:12,
+            background:"rgba(255,255,255,.1)",borderRadius:13,padding:"11px 15px",
+            border:"1px solid rgba(255,255,255,.14)"}}>
+            <div style={{width:32,height:32,borderRadius:9,background:"rgba(255,255,255,.2)",
+              display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <Ic n={ic} s={16} c="#fff"/>
+            </div>
+            <span style={{fontSize:12,color:"#fff",fontWeight:500}}>{txt}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+/* ════════════════════════════════════════
+   PAGE INSCRIPTION
+════════════════════════════════════════ */
+const RegisterPage=({goLogin})=>{
+  const [nom,setNom]=useState("");
+  const [email,setEmail]=useState("");
+  const [mdp,setMdp]=useState("");
+  const [mdp2,setMdp2]=useState("");
+  const [role,setRole]=useState("");
+  const [errs,setErrs]=useState({});
+  const [done,setDone]=useState(false);
+
+  const submit=()=>{
+    const e={};
+    if(!nom.trim()) e.nom="Nom requis";
+    if(!email.includes("@")) e.email="Email invalide";
+    if(mdp.length<6) e.mdp="Minimum 6 caractères";
+    if(mdp!==mdp2) e.mdp2="Les mots de passe ne correspondent pas";
+    setErrs(e);
+    if(!Object.keys(e).length) {
+      // Ajouter l'inscription à la liste globale pour que l'admin puisse la voir
+      const nouvelleInscription = {
+        id: Date.now(),
+        nom: nom,
+        email: email,
+        role: "Gestionnaire", // Rôle par défaut
+        date: new Date().toLocaleDateString("fr"),
+        statut: "attente"
+      };
+      
+      // Stocker dans localStorage pour que l'admin puisse y accéder
+      const inscriptionsExistantes = JSON.parse(localStorage.getItem('inscriptions') || '[]');
+      inscriptionsExistantes.push(nouvelleInscription);
+      localStorage.setItem('inscriptions', JSON.stringify(inscriptionsExistantes));
+      
+      setDone(true);
+    }
+  };
+
+  if(done) return (
+    <div style={{minHeight:"100vh",display:"flex",fontFamily:f}}>
+      <LeftPanel/>
+      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",
+        padding:"40px 60px",background:W}}>
+        <div style={{textAlign:"center",maxWidth:380}}>
+          <div style={{width:80,height:80,borderRadius:"50%",background:GR+"18",
+            display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 18px"}}>
+            <Ic n="check_circle" s={42} c={GR}/>
+          </div>
+          <div style={{fontSize:26,fontWeight:900,color:TXT,marginBottom:10}}>
+            Inscription réussie ! 🎉
+          </div>
+          <div style={{fontSize:14,color:MUT,marginBottom:10,lineHeight:1.6}}>
+            Bonjour <b style={{color:TXT}}>{nom}</b> !
+          </div>
+          <div style={{background:GR+"12",border:`1px solid ${GR}44`,borderRadius:12,
+            padding:"14px 18px",marginBottom:26,fontSize:13,color:TXT,textAlign:"left",lineHeight:1.6}}>
+            Votre demande d'inscription a bien été envoyée.<br/>
+            En attente de validation par l'Administrateur.<br/>
+            Vous pourrez vous connecter dès validation.
+          </div>
+          <Btn full ic="login" onClick={goLogin}>Retour à la connexion</Btn>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{minHeight:"100vh",display:"flex",fontFamily:f}}>
+      <LeftPanel/>
+      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",
+        padding:"40px 60px",background:W,overflowY:"auto"}}>
+        <div style={{width:"100%",maxWidth:420}}>
+          <div style={{marginBottom:26}}>
+            <div style={{fontSize:26,fontWeight:900,color:TXT,marginBottom:5}}>Créer un compte</div>
+            <div style={{fontSize:13,color:MUT}}>Remplissez le formulaire pour vous inscrire</div>
+          </div>
+          <Inp label="Nom complet" value={nom} set={setNom} ph="Jean Dupont" ic="person" err={errs.nom} req/>
+          <Inp label="Adresse email" value={email} set={setEmail} ph="mail@exemple.com" ic="mail" err={errs.email} req/>
+          <Inp label="Mot de passe" value={mdp} set={setMdp} ph="Minimum 6 caractères" type="password" ic="lock" err={errs.mdp} req/>
+          <Inp label="Confirmer mot de passe" value={mdp2} set={setMdp2} ph="••••••••" type="password" ic="lock_reset" err={errs.mdp2} req/>
+                    <div style={{background:"#FFF9E6",border:`1px solid ${OR}44`,borderRadius:10,
+            padding:"10px 14px",marginBottom:16,display:"flex",gap:8,alignItems:"center"}}>
+            <Ic n="info" s={15} c={OR}/>
+            <span style={{fontSize:12,color:TXT}}>Compte activé après validation par l'Administrateur.</span>
+          </div>
+          <Btn full ic="person_add" onClick={submit}>S'inscrire</Btn>
+          <div style={{textAlign:"center",marginTop:16,fontSize:13,color:MUT}}>
+            Déjà inscrit ?{" "}
+            <span onClick={goLogin} style={{color:P,fontWeight:700,cursor:"pointer"}}>Se connecter</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════
+   PAGE CONNEXION
+════════════════════════════════════════ */
+const LoginPage=({goReg,onLogin})=>{
+  const [selRole,setSelRole]=useState("gestionnaire");
+  const [email,setEmail]=useState("");
+  const [mdp,setMdp]=useState("");
+  const [err,setErr]=useState("");
+  const [showForgotPassword,setShowForgotPassword]=useState(false);
+  const [forgotEmail,setForgotEmail]=useState("");
+  const [forgotSent,setForgotSent]=useState(false);
+
+  const submit=()=>{
+    if(!email||!mdp){setErr("Veuillez remplir tous les champs.");return;}
+    setErr("");
+    onLogin(selRole);
+  };
+
+  const handleForgotPassword=()=>{
+    if(!forgotEmail.includes("@")){setErr("Veuillez entrer un email valide.");return;}
+    setErr("");
+    setForgotSent(true);
+    setTimeout(()=>{setShowForgotPassword(false);setForgotSent(false);setForgotEmail("");},3000);
+  };
+
+  const handleGoogleLogin=()=>{
+    // Simulation de connexion Google
+    onLogin(selRole);
+  };
+
+  return (
+    <div style={{minHeight:"100vh",display:"flex",fontFamily:f}}>
+      <LeftPanel/>
+      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",
+        padding:"40px 60px",background:W}}>
+        <div style={{width:"100%",maxWidth:400}}>
+          <div style={{marginBottom:24}}>
+            <div style={{fontSize:26,fontWeight:900,color:TXT,marginBottom:5}}>Se connecter</div>
+            <div style={{fontSize:13,color:MUT}}>Entrez votre email et mot de passe</div>
+          </div>
+          {/* Sélecteur rôle */}
+          <div style={{marginBottom:20}}>
+            <div style={{fontSize:12,fontWeight:700,color:TXT,marginBottom:9}}>Choisissez votre rôle</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:9}}>
+              {Object.entries(ROLES).map(([key,r])=>(
+                <div key={key} onClick={()=>setSelRole(key)} style={{
+                  padding:"11px 7px",borderRadius:13,cursor:"pointer",textAlign:"center",
+                  background:selRole===key?r.color+"18":BG,
+                  border:`2px solid ${selRole===key?r.color:BOR}`,transition:"all .14s"}}>
+                  <Ic n={r.icon} s={20} c={selRole===key?r.color:MUT}/>
+                  <div style={{fontSize:10,fontWeight:700,marginTop:5,fontFamily:f,
+                    color:selRole===key?r.color:MUT,lineHeight:1.2}}>{r.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <Inp label="Email" value={email} set={setEmail} ph="mail@exemple.com" ic="mail" req/>
+          <Inp label="Mot de passe" value={mdp} set={setMdp} ph="••••••••" type="password" ic="lock" req/>
+          {err&&<div style={{background:RD+"12",border:`1px solid ${RD}44`,borderRadius:10,
+            padding:"10px 14px",marginBottom:12,fontSize:13,color:RD,display:"flex",gap:8,alignItems:"center"}}>
+            <Ic n="error" s={16} c={RD}/>{err}
+          </div>}
+          <div style={{textAlign:"right",marginBottom:16}}>
+            <span onClick={()=>setShowForgotPassword(true)} style={{fontSize:12,color:P,fontWeight:700,cursor:"pointer"}}>Mot de passe oublié ?</span>
+          </div>
+          <Btn full ic="login" onClick={submit}>Se connecter</Btn>
+          
+          {/* Séparateur */}
+          <div style={{display:"flex",alignItems:"center",margin:"20px 0"}}>
+            <div style={{flex:1,height:"1px",background:BOR}}/>
+            <span style={{padding:"0 16px",fontSize:12,color:MUT}}>ou</span>
+            <div style={{flex:1,height:"1px",background:BOR}}/>
+          </div>
+          
+          {/* Bouton Google */}
+          <Btn full v="outline" onClick={handleGoogleLogin} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:16}}>
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Continuer avec Google
+          </Btn>
+          
+          <div style={{textAlign:"center",marginTop:16,fontSize:13,color:MUT}}>
+            Pas de compte ?{" "}
+            <span onClick={goReg} style={{color:P,fontWeight:700,cursor:"pointer"}}>S'inscrire</span>
+          </div>
+          
+          {/* Modal mot de passe oublié */}
+          {showForgotPassword && (
+            <Modal title="Mot de passe oublié" onClose={()=>setShowForgotPassword(false)} w={400}>
+              {!forgotSent ? (
+                <>
+                  <div style={{marginBottom:20}}>
+                    <p style={{fontSize:14,color:TXT,lineHeight:1.6}}>
+                      Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
+                    </p>
+                  </div>
+                  <Inp label="Email" value={forgotEmail} set={setForgotEmail} ph="mail@exemple.com" ic="mail" req/>
+                  {err&&<div style={{background:RD+"12",border:`1px solid ${RD}44`,borderRadius:10,
+                    padding:"10px 14px",marginBottom:12,fontSize:13,color:RD,display:"flex",gap:8,alignItems:"center"}}>
+                    <Ic n="error" s={16} c={RD}/>{err}
+                  </div>}
+                  <div style={{display:"flex",gap:10,marginTop:8}}>
+                    <Btn full ic="send" onClick={handleForgotPassword}>Envoyer le lien</Btn>
+                    <Btn v="outline" onClick={()=>setShowForgotPassword(false)} style={{minWidth:90}}>Annuler</Btn>
+                  </div>
+                </>
+              ) : (
+                <div style={{textAlign:"center",padding:"20px 0"}}>
+                  <div style={{width:60,height:60,borderRadius:"50%",background:GR+"18",
+                    display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
+                    <Ic n="check_circle" s={30} c={GR}/>
+                  </div>
+                  <div style={{fontSize:16,fontWeight:700,color:TXT,marginBottom:8}}>
+                    Email envoyé ! 
+                  </div>
+                  <div style={{fontSize:13,color:MUT,lineHeight:1.5}}>
+                    Un lien de réinitialisation a été envoyé à <b>{forgotEmail}</b>
+                  </div>
+                </div>
+              )}
+            </Modal>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════
+   DONNÉES INITIALES
+════════════════════════════════════════ */
+const D_USERS=[
+  {id:1,nom:"Admin Principal",email:"admin@pme.bj",role:"admin",actif:true,connexion:"18/04 08:30"},
+  {id:2,nom:"Marie Gérant",email:"marie@pme.bj",role:"gerant",actif:true,connexion:"18/04 09:15"},
+  {id:3,nom:"Aisha Gest.",email:"aisha@pme.bj",role:"gestionnaire",actif:true,connexion:"18/04 07:45"},
+];
+const D_INSCRIPTIONS=[
+  {id:1,nom:"Marie Dupont",email:"marie.d@gmail.com",role:"Gérant",date:"17/04",statut:"attente"},
+  {id:2,nom:"Paul Kofi",email:"paul.k@yahoo.fr",role:"Gestionnaire",date:"16/04",statut:"attente"},
+];
+const D_PRODUITS=[
+  {id:1,nom:"Chaussures Nike",cat:"Chaussures",fourn:"SportPro",pv:45000,pa:28000,stock:85,seuil:20},
+  {id:2,nom:"Sac à main cuir",cat:"Accessoires",fourn:"Mode Afrique",pv:32000,pa:18000,stock:12,seuil:15},
+  {id:3,nom:"T-shirt coton",cat:"Vêtements",fourn:"TextileBJ",pv:8500,pa:4500,stock:3,seuil:10},
+  {id:4,nom:"Montre classique",cat:"Accessoires",fourn:"WatchTime",pv:65000,pa:40000,stock:28,seuil:5},
+  {id:5,nom:"Robe wax",cat:"Vêtements",fourn:"Mode Afrique",pv:15000,pa:8000,stock:54,seuil:12},
+];
+const D_CATS=[
+  {id:1,nom:"Vêtements",desc:"Habits, tenues",nb:8},
+  {id:2,nom:"Chaussures",desc:"Toutes chaussures",nb:6},
+  {id:3,nom:"Accessoires",desc:"Sacs, montres",nb:7},
+];
+const D_FOURNS=[
+  {id:1,nom:"SportPro SARL",tel:"21 301 234",email:"contact@sportpro.bj",adresse:"Cotonou",delai:5},
+  {id:2,nom:"Mode Afrique",tel:"21 302 345",email:"info@modeafrique.bj",adresse:"Porto-Novo",delai:3},
+  {id:3,nom:"TextileBJ",tel:"21 303 456",email:"textile@bj.com",adresse:"Akpakpa",delai:7},
+];
+const D_MOUVS=[
+  {id:1,produit:"Chaussures Nike",type:"ENTREE",qte:50,avant:35,apres:85,date:"20/02"},
+  {id:2,produit:"Sac à main",type:"SORTIE",qte:5,avant:17,apres:12,date:"22/02"},
+  {id:3,produit:"T-shirt coton",type:"SORTIE",qte:20,avant:23,apres:3,date:"25/02"},
+];
+const D_ALERTES=[
+  {id:1,produit:"T-shirt coton",type:"Rupture imminente",stock:3,seuil:10,date:"18/04",lue:false,col:RD,ic:"dangerous"},
+  {id:2,produit:"Sac à main cuir",type:"Stock faible",stock:12,seuil:15,date:"17/04",lue:false,col:OR,ic:"warning"},
+  {id:3,produit:"Sandales",type:"Stock faible",stock:7,seuil:10,date:"16/04",lue:true,col:OR,ic:"warning"},
+];
+const D_VENTES=[
+  {id:1,client:"Kofi Mensah",date:"10/03",lignes:2,montant:90000,statut:"Livrée"},
+  {id:2,client:"Aisha Diallo",date:"12/03",lignes:1,montant:32000,statut:"En cours"},
+];
+const D_CMDF=[
+  {id:1,fourn:"SportPro SARL",num:"CMD-001",date:"01/03",dateLiv:"06/03",montant:1400000,statut:"Validée"},
+  {id:2,fourn:"Mode Afrique",num:"CMD-002",date:"03/03",dateLiv:"08/03",montant:240000,statut:"En attente"},
+];
+const D_PERTES=[
+  {id:1,produit:"T-shirt coton",cause:"Endommagé",qte:5,impact:42500,date:"05/03"},
+  {id:2,produit:"Sac à main",cause:"Vol",qte:2,impact:64000,date:"08/03"},
+];
+const mouvChart=[
+  {m:"Oct",e:420,s:280},{m:"Nov",e:380,s:310},{m:"Déc",e:510,s:390},
+  {m:"Jan",e:340,s:260},{m:"Fév",e:480,s:350},{m:"Mar",e:410,s:290},
+];
+const stockChart=[
+  {name:"Chaussures",value:85,color:P},{name:"Vêtements",value:54,color:"#6AD2FF"},
+  {name:"Montres",value:28,color:GR},{name:"Sacs",value:12,color:OR},
+];
+const prevChart=[
+  {m:"Jan",reel:420},{m:"Fév",reel:380},{m:"Mar",reel:510},
+  {m:"Avr",prev:460},{m:"Mai",prev:520},{m:"Jun",prev:490},
+];
+
+/* ════════════════════════════════════════
+   HOOK TOAST
+════════════════════════════════════════ */
+const useToast=()=>{
+  const [toast,setToast]=useState(null);
+  const show=(msg,type="success")=>{
+    setToast({msg,type});
+    setTimeout(()=>setToast(null),3200);
+  };
+  return [toast,show];
+};
+
+/* ════════════════════════════════════════
+   ESPACE ADMINISTRATEUR
+════════════════════════════════════════ */
+const ADMIN_M=[
+  {id:"a_dash",icon:"dashboard",label:"Tableau de bord"},
+  {id:"a_users",icon:"group",label:"Gérer utilisateurs"},
+  {id:"a_valid",icon:"how_to_reg",label:"Valider inscriptions"},
+  {id:"a_roles",icon:"admin_panel_settings",label:"Rôles & Permissions"},
+  {id:"a_seuils",icon:"tune",label:"Seuils d'alerte"},
+  {id:"a_entrep",icon:"business",label:"Entreprise"},
+];
+
+const AdminApp=({logout})=>{
+  const [pg,setPg]=useState("a_dash");
+  const [toast,show]=useToast();
+  const [users,setUsers]=useState(D_USERS);
+  // Charger les inscriptions depuis le localStorage + données initiales
+  const [inscs,setInscs]=useState(()=>{
+    const stored = JSON.parse(localStorage.getItem('inscriptions') || '[]');
+    return [...D_INSCRIPTIONS, ...stored];
+  });
+  const [produits]=useState(D_PRODUITS);
+  const [entreprise,setEntrep]=useState({nom:"Mon Entreprise SARL",tel:"+229 97 12 34 56",email:"contact@pme.bj",adresse:"Cotonou, Bénin"});
+  const [modal,setModal]=useState(null);
+  const [confirm,setConfirm]=useState(null);
+  const [F,setF]=useState({});
+  const [searchQuery,setSearchQuery]=useState("");
+  const [showNotifications,setShowNotifications]=useState(false);
+  const sf=(k,v)=>setF(p=>({...p,[k]:v}));
+  const closeM=()=>{setModal(null);setF({});};
+
+  // Recharger les inscriptions depuis localStorage périodiquement
+  useEffect(() => {
+    const reloadInscriptions = () => {
+      const stored = JSON.parse(localStorage.getItem('inscriptions') || '[]');
+      setInscs([...D_INSCRIPTIONS, ...stored]);
+    };
+    
+    // Recharger au montage
+    reloadInscriptions();
+    
+    // Recharger toutes les 5 secondes pour voir les nouvelles inscriptions
+    const interval = setInterval(reloadInscriptions, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  /* Users CRUD */
+  const saveUser=()=>{
+    if(!F.nom?.trim()||!F.email?.trim()||!F.role){show("Veuillez remplir tous les champs requis","error");return;}
+    if(F._id){
+      setUsers(u=>u.map(x=>x.id===F._id?{...x,nom:F.nom,email:F.email,role:F.role}:x));
+      show("Utilisateur modifié avec succès ✅");
+    } else {
+      const nu={id:Date.now(),nom:F.nom,email:F.email,role:F.role,actif:true,connexion:"Jamais"};
+      setUsers(u=>[...u,nu]);
+      show("Compte créé avec succès ✅");
+    }
+    closeM();
+  };
+  const delUser=(id)=>setConfirm({msg:"Supprimer cet utilisateur ?",ok:()=>{
+    setUsers(u=>u.filter(x=>x.id!==id));show("Utilisateur supprimé");setConfirm(null);
+  }});
+  const toggleUser=(id)=>{
+    setUsers(u=>u.map(x=>x.id===id?{...x,actif:!x.actif}:x));
+    show("Statut mis à jour ✅");
+  };
+
+  /* Inscriptions */
+  const valider=(id,action)=>{
+    if(action==="ok"){
+      const ins=inscs.find(x=>x.id===id);
+      const roleKey=ins.role==="Gérant"?"gerant":"gestionnaire";
+      setUsers(u=>[...u,{id:Date.now(),nom:ins.nom,email:ins.email,role:roleKey,actif:true,connexion:"Jamais"}]);
+      setInscs(i=>i.map(x=>x.id===id?{...x,statut:"validee"}:x));
+      show("Inscription validée — compte créé ✅");
+    } else {
+      setInscs(i=>i.map(x=>x.id===id?{...x,statut:"rejetee"}:x));
+      show("Inscription rejetée");
+    }
+  };
+
+  const titleMap={a_dash:"Tableau de bord",a_users:"Gérer les utilisateurs",
+    a_valid:"Valider les inscriptions",a_roles:"Rôles & Permissions",
+    a_seuils:"Seuils d'alerte",a_entrep:"Paramétrer l'entreprise"};
+
+  const content={
+    a_dash:(
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
+          <KPI ic="group" label="Utilisateurs actifs" value={users.filter(u=>u.actif).length} col={P}/>
+          <KPI ic="how_to_reg" label="Inscriptions en attente" value={inscs.filter(i=>i.statut==="attente").length} col={OR}/>
+          <KPI ic="inventory_2" label="Total produits" value={produits.length} col={GR}/>
+          <KPI ic="tune" label="Seuils configurés" value={produits.length} col={P2}/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1.5fr 1fr",gap:18,marginBottom:18}}>
+          <Card>
+            <SH title="Évolution du stock — 6 mois" ic="bar_chart"/>
+            <ResponsiveContainer width="100%" height={190}>
+              <AreaChart data={mouvChart} margin={{top:4,right:8,left:-22,bottom:0}}>
+                <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={P} stopOpacity={.15}/><stop offset="95%" stopColor={P} stopOpacity={0}/>
+                </linearGradient></defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={BOR} vertical={false}/>
+                <XAxis dataKey="m" tick={{fontSize:10,fill:MUT}} axisLine={false} tickLine={false}/>
+                <YAxis tick={{fontSize:10,fill:MUT}} axisLine={false} tickLine={false}/>
+                <Tooltip contentStyle={{borderRadius:11,fontSize:12}}/>
+                <Legend wrapperStyle={{fontSize:10}}/>
+                <Area type="monotone" dataKey="e" name="Entrées" stroke={P} strokeWidth={2} fill="url(#ga)"/>
+                <Area type="monotone" dataKey="s" name="Sorties" stroke={OR} strokeWidth={2} fill="none"/>
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
+          <Card>
+            <SH title="Répartition stock" ic="pie_chart"/>
+            <ResponsiveContainer width="100%" height={190}>
+              <PieChart>
+                <Pie data={stockChart} cx="50%" cy="44%" innerRadius={46} outerRadius={76}
+                  dataKey="value" nameKey="name" paddingAngle={3}>
+                  {stockChart.map((d,i)=><Cell key={i} fill={d.color}/>)}
+                </Pie>
+                <Tooltip contentStyle={{borderRadius:11,fontSize:12}}/>
+                <Legend wrapperStyle={{fontSize:10}}/>
+              </PieChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18}}>
+          <Card>
+            <SH title="Inscriptions en attente" ic="how_to_reg"/>
+            {inscs.filter(i=>i.statut==="attente").length===0&&
+              <div style={{textAlign:"center",padding:"18px 0",color:MUT,fontSize:13}}>✅ Aucune inscription en attente</div>}
+            {inscs.filter(i=>i.statut==="attente").map((u,i)=>(
+              <div key={u.id} style={{display:"flex",alignItems:"center",gap:11,padding:"11px 0",
+                borderBottom:`1px solid ${BOR}`}}>
+                <div style={{width:38,height:38,borderRadius:"50%",background:P+"18",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  fontWeight:800,color:P,fontSize:14,flexShrink:0}}>{u.nom[0]}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:700,color:TXT}}>{u.nom}</div>
+                  <div style={{fontSize:11,color:MUT}}>{u.role} — {u.date}</div>
+                </div>
+                <Btn sm ic="check_circle" col={GR} onClick={()=>valider(u.id,"ok")}>Valider</Btn>
+                <Btn sm ic="cancel" v="outline" col={RD} onClick={()=>valider(u.id,"non")}>Rejeter</Btn>
+              </div>
+            ))}
+          </Card>
+          <Card>
+            <SH title="Utilisateurs actifs" ic="group"/>
+            {users.filter(u=>u.actif).map((u,i)=>(
+              <div key={u.id} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",
+                borderBottom:i<users.filter(x=>x.actif).length-1?`1px solid ${BOR}`:undefined}}>
+                <div style={{width:32,height:32,borderRadius:"50%",
+                  background:ROLES[u.role]?.color+"22",display:"flex",alignItems:"center",
+                  justifyContent:"center",fontWeight:800,color:ROLES[u.role]?.color,fontSize:12,flexShrink:0}}>{u.nom[0]}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,fontWeight:700,color:TXT}}>{u.nom}</div>
+                  <div style={{fontSize:10,color:MUT}}>{u.email}</div>
+                </div>
+                <Chip col={ROLES[u.role]?.color||P}>{ROLES[u.role]?.label||u.role}</Chip>
+              </div>
+            ))}
+          </Card>
+        </div>
+      </div>
+    ),
+    a_users:(
+      <div>
+        <Card>
+          <SH title={`Utilisateurs (${users.length})`} ic="group"
+            action={<Btn ic="person_add" onClick={()=>{setF({});setModal("user");}}>Créer un compte</Btn>}/>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <THead cols={["#","Nom","Email","Rôle","Dernière connexion","Statut","Actions"]}/>
+            <tbody>
+              {users.map((u,i)=>(
+                <TRow key={u.id} i={i} cells={[
+                  <span style={{color:MUT,fontSize:11}}>#{u.id}</span>,
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{width:30,height:30,borderRadius:"50%",
+                      background:ROLES[u.role]?.color+"22",display:"flex",alignItems:"center",
+                      justifyContent:"center",color:ROLES[u.role]?.color,fontWeight:800,fontSize:12}}>
+                      {u.nom[0]}
+                    </div>
+                    <b style={{color:TXT}}>{u.nom}</b>
+                  </div>,
+                  <span style={{color:P,fontSize:12}}>{u.email}</span>,
+                  <Chip col={ROLES[u.role]?.color||P}>{ROLES[u.role]?.label||u.role}</Chip>,
+                  <span style={{color:MUT,fontSize:11}}>{u.connexion}</span>,
+                  <Chip col={u.actif?GR:RD}>{u.actif?"Actif":"Inactif"}</Chip>,
+                  <div style={{display:"flex",gap:5}}>
+                    <Btn sm ic="edit" v="ghost" onClick={()=>{setF({_id:u.id,nom:u.nom,email:u.email,role:u.role});setModal("user");}}>Modifier</Btn>
+                    <Btn sm ic={u.actif?"person_off":"person"} v="outline" col={OR} onClick={()=>toggleUser(u.id)}>{u.actif?"Désactiver":"Activer"}</Btn>
+                    <Btn sm ic="delete" v="outline" col={RD} onClick={()=>delUser(u.id)}>Suppr.</Btn>
+                  </div>
+                ]}/>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+        {modal==="user"&&(
+          <Modal title={F._id?"Modifier l'utilisateur":"Créer un compte"} onClose={closeM}>
+            <Inp label="Nom complet" value={F.nom} set={v=>sf("nom",v)} ph="Marie Dupont" ic="person" req/>
+            <Inp label="Email" value={F.email} set={v=>sf("email",v)} ph="marie@pme.bj" ic="mail" req/>
+            {!F._id&&<Inp label="Mot de passe" value={F.mdp} set={v=>sf("mdp",v)} ph="••••••••" type="password" ic="lock" req/>}
+            <Sel label="Rôle" value={F.role} set={v=>sf("role",v)} opts={["admin","gerant","gestionnaire"]} req/>
+            <div style={{display:"flex",gap:10,marginTop:8}}>
+              <Btn full ic="save" onClick={saveUser}>{F._id?"Enregistrer les modifications":"Créer le compte"}</Btn>
+              <Btn v="outline" onClick={closeM} style={{minWidth:90}}>Annuler</Btn>
+            </div>
+          </Modal>
+        )}
+        {confirm&&<Confirm msg={confirm.msg} onOk={confirm.ok} onCancel={()=>setConfirm(null)}/>}
+      </div>
+    ),
+    a_valid:(
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:18}}>
+          <KPI ic="pending" label="En attente" value={inscs.filter(i=>i.statut==="attente").length} col={OR}/>
+          <KPI ic="check_circle" label="Validées" value={inscs.filter(i=>i.statut==="validee").length} col={GR}/>
+          <KPI ic="cancel" label="Rejetées" value={inscs.filter(i=>i.statut==="rejetee").length} col={RD}/>
+        </div>
+        <Card>
+          <SH title="STOCKSHOW" ic="how_to_reg"/>
+          {inscs.map((u)=>(
+            <div key={u.id} style={{padding:"14px",borderRadius:13,marginBottom:10,
+              background:BG,border:`1px solid ${BOR}`}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{display:"flex",alignItems:"center",gap:13}}>
+                  <div style={{width:44,height:44,borderRadius:"50%",background:P+"18",
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    fontWeight:800,color:P,fontSize:17}}>{u.nom[0]}</div>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700,color:TXT}}>{u.nom}</div>
+                    <div style={{fontSize:12,color:MUT}}>{u.email} — {u.role}</div>
+                    <div style={{fontSize:11,color:MUT}}>Demande du {u.date}</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <Chip col={u.statut==="attente"?OR:u.statut==="validee"?GR:RD}>
+                    {u.statut==="attente"?"En attente":u.statut==="validee"?"✅ Validée":"❌ Rejetée"}
+                  </Chip>
+                  {u.statut==="attente"&&<>
+                    <Btn ic="check_circle" col={GR} onClick={()=>valider(u.id,"ok")}>Valider</Btn>
+                    <Btn ic="cancel" v="outline" col={RD} onClick={()=>valider(u.id,"non")}>Rejeter</Btn>
+                  </>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </Card>
+      </div>
+    ),
+    a_roles:(
+      <Card>
+        <SH title="Matrice des permissions" ic="grid_view"/>
+        <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <THead cols={["Module","Administrateur","Gérant","Gestionnaire"]}/>
+          <tbody>
+            {[["Tableau de bord","✅ Complet","✅ Complet","✅ Limité"],
+              ["Gérer utilisateurs","✅ CRUD","❌ Non","❌ Non"],
+              ["Valider inscriptions","✅ Oui","❌ Non","❌ Non"],
+              ["Gérer rôles & seuils","✅ Oui","❌ Non","❌ Non"],
+              ["Produits / Catégories","✅ CRUD","👁️ Lecture","✅ CRUD"],
+              ["Fournisseurs","✅ CRUD","👁️ Lecture","✅ CRUD"],
+              ["Mouvements de stock","✅ Complet","👁️ Lecture","✅ CRUD"],
+              ["Commandes clients","✅ Complet","👁️ Lecture","✅ CRUD"],
+              ["Commandes fournisseurs","✅ Complet","✅ Validation","✅ Création"],
+              ["Pertes","✅ Complet","👁️ Lecture","✅ CRUD"],
+              ["Alertes","✅ Complet","✅ Lecture","✅ + Traitement"],
+              ["Prévisions","✅ Complet","✅ Complet","❌ Non"],
+              ["Rapports","✅ Complet","✅ Complet","❌ Non"],
+              ["Recommandations","✅ Complet","✅ Validation","❌ Non"],
+            ].map(([m,a,g,gs],i)=>{
+              const c=v=>v.startsWith("✅")?GR:v.startsWith("👁")?OR:RD;
+              return <TRow key={i} i={i} cells={[
+                <b style={{color:TXT,fontSize:13}}>{m}</b>,
+                <span style={{color:c(a),fontWeight:600,fontSize:12}}>{a}</span>,
+                <span style={{color:c(g),fontWeight:600,fontSize:12}}>{g}</span>,
+                <span style={{color:c(gs),fontWeight:600,fontSize:12}}>{gs}</span>,
+              ]}/>;
+            })}
+          </tbody>
+        </table>
+      </Card>
+    ),
+    a_seuils:(
+      <Card>
+        <SH title="Seuils d'alerte par produit" ic="tune"
+          action={<Btn ic="edit" sm onClick={()=>{setF({});setModal("seuil");}}>Modifier un seuil</Btn>}/>
+        <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <THead cols={["Produit","Stock actuel","Seuil d'alerte","État","Action"]}/>
+          <tbody>
+            {D_PRODUITS.map((p,i)=>{
+              const crit=p.stock<=p.seuil;
+              return <TRow key={p.id} i={i} cells={[
+                <b style={{color:TXT}}>{p.nom}</b>,
+                <b style={{color:crit?RD:GR,fontSize:15}}>{p.stock}</b>,
+                <span style={{color:OR,fontWeight:700}}>{p.seuil}</span>,
+                crit?<Chip col={RD}>⚠ Critique</Chip>:<Chip col={GR}>✓ OK</Chip>,
+                <Btn sm ic="edit" v="ghost" onClick={()=>{setF({produit:p.nom,seuil:p.seuil.toString()});setModal("seuil");}}>
+                  Modifier
+                </Btn>
+              ]}/>;
+            })}
+          </tbody>
+        </table>
+        {modal==="seuil"&&(
+          <Modal title="Modifier le seuil d'alerte" onClose={closeM} w={400}>
+            <Sel label="Produit" value={F.produit} set={v=>sf("produit",v)} opts={D_PRODUITS.map(p=>p.nom)} req/>
+            <Inp label="Nouveau seuil (unités)" value={F.seuil} set={v=>sf("seuil",v)} ph="20" ic="warning_amber" req/>
+            <div style={{display:"flex",gap:10,marginTop:8}}>
+              <Btn full ic="save" onClick={()=>{if(!F.produit||!F.seuil){show("Champs requis","error");return;}show(`Seuil de "${F.produit}" mis à jour à ${F.seuil} unités ✅`);closeM();}}>Enregistrer</Btn>
+              <Btn v="outline" onClick={closeM} style={{minWidth:90}}>Annuler</Btn>
+            </div>
+          </Modal>
+        )}
+      </Card>
+    ),
+    a_entrep:(
+      <Card style={{maxWidth:620}}>
+        <SH title="Informations de l'entreprise" ic="business"/>
+        <div style={{background:P+"0A",border:`1px solid ${P}33`,borderRadius:11,
+          padding:"11px 14px",marginBottom:18,display:"flex",gap:8,alignItems:"center"}}>
+          <Ic n="info" s={16} c={P}/>
+          <span style={{fontSize:12,color:TXT}}>Ces informations apparaissent sur tous les rapports.</span>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <Inp label="Nom de l'entreprise" value={entreprise.nom} set={v=>setEntrep(e=>({...e,nom:v}))} ph="Mon Entreprise SARL" ic="business" req/>
+          <Inp label="Téléphone" value={entreprise.tel} set={v=>setEntrep(e=>({...e,tel:v}))} ph="+229 97 12 34 56" ic="phone"/>
+          <Inp label="Email" value={entreprise.email} set={v=>setEntrep(e=>({...e,email:v}))} ph="contact@pme.bj" ic="mail"/>
+        </div>
+        <Inp label="Adresse complète" value={entreprise.adresse} set={v=>setEntrep(e=>({...e,adresse:v}))} ph="Cotonou, Bénin" ic="location_on"/>
+        <Btn ic="save" onClick={()=>show("Informations de l'entreprise enregistrées ✅")}>Enregistrer</Btn>
+      </Card>
+    ),
+  };
+
+  return (
+    <Layout page={pg} setPage={setPg} role="admin" logout={logout} menus={ADMIN_M}
+      title={titleMap[pg]} sub="Espace Administrateur" toast={toast}
+      searchQuery={searchQuery} setSearchQuery={setSearchQuery} 
+      showNotifications={showNotifications} setShowNotifications={setShowNotifications}>
+      {content[pg]}
+    </Layout>
+  );
+};
+
+/* ════════════════════════════════════════
+   ESPACE GESTIONNAIRE
+════════════════════════════════════════ */
+const GEST_M=[
+  {id:"g_prod",icon:"inventory_2",label:"Gérer produits"},
+  {id:"g_cats",icon:"category",label:"Gérer catégories"},
+  {id:"g_fourns",icon:"local_shipping",label:"Gérer fournisseurs"},
+  {id:"g_ventes",icon:"shopping_cart",label:"Commandes clients"},
+  {id:"g_cmdf",icon:"receipt_long",label:"Commandes fournisseurs"},
+  {id:"g_mouvs",icon:"swap_horiz",label:"Mouvements de stock"},
+  {id:"g_pertes",icon:"trending_down",label:"Enregistrer pertes"},
+  {id:"g_alertes",icon:"notifications",label:"Alertes"},
+];
+
+const GestApp=({logout})=>{
+  const [pg,setPg]=useState("g_prod");
+  const [toast,show]=useToast();
+  const [produits,setProd]=useState(D_PRODUITS);
+  const [cats,setCats]=useState(D_CATS);
+  const [fourns,setFourns]=useState(D_FOURNS);
+  const [ventes,setVentes]=useState(D_VENTES);
+  const [cmdf,setCmdf]=useState(D_CMDF);
+  const [mouvs,setMouvs]=useState(D_MOUVS);
+  const [pertes,setPertes]=useState(D_PERTES);
+  const [alertes,setAlertes]=useState(D_ALERTES);
+  const [modal,setModal]=useState(null);
+  const [confirm,setConfirm]=useState(null);
+  const [F,setF]=useState({});
+  const [searchQuery,setSearchQuery]=useState("");
+  const [showNotifications,setShowNotifications]=useState(false);
+  const sf=(k,v)=>setF(p=>({...p,[k]:v}));
+  const closeM=()=>{setModal(null);setF({});};
+
+  const alertesBadge=alertes.filter(a=>!a.lue).length;
+  const menus=GEST_M.map(m=>m.id==="g_alertes"?{...m,badge:alertesBadge}:m);
+
+  /* PRODUITS */
+  const saveProd=()=>{
+    if(!F.nom?.trim()||!F.cat||!F.fourn){show("Champs requis manquants","error");return;}
+    const data={nom:F.nom,cat:F.cat,fourn:F.fourn,pv:+F.pv||0,pa:+F.pa||0,stock:+F.stock||0,seuil:+F.seuil||10};
+    if(F._id){
+      setProd(p=>p.map(x=>x.id===F._id?{...x,...data}:x));
+      show("Produit modifié avec succès ✅");
+    } else {
+      setProd(p=>[...p,{id:Date.now(),...data}]);
+      show("Produit ajouté avec succès ✅");
+    }
+    closeM();
+  };
+  const delProd=(id)=>setConfirm({msg:"Supprimer ce produit ?",ok:()=>{setProd(p=>p.filter(x=>x.id!==id));show("Produit supprimé");setConfirm(null);}});
+
+  /* CATÉGORIES */
+  const saveCat=()=>{
+    if(!F.nom?.trim()){show("Nom requis","error");return;}
+    if(F._id){
+      setCats(c=>c.map(x=>x.id===F._id?{...x,nom:F.nom,desc:F.desc||""}:x));
+      show("Catégorie modifiée ✅");
+    } else {
+      setCats(c=>[...c,{id:Date.now(),nom:F.nom,desc:F.desc||"",nb:0}]);
+      show("Catégorie ajoutée ✅");
+    }
+    closeM();
+  };
+  const delCat=(id)=>setConfirm({msg:"Supprimer cette catégorie ?",ok:()=>{setCats(c=>c.filter(x=>x.id!==id));show("Catégorie supprimée");setConfirm(null);}});
+
+  /* FOURNISSEURS */
+  const saveFourn=()=>{
+    if(!F.nom?.trim()||!F.tel?.trim()){show("Nom et téléphone requis","error");return;}
+    const data={nom:F.nom,tel:F.tel,email:F.email||"",adresse:F.adresse||"",delai:+F.delai||0};
+    if(F._id){
+      setFourns(f=>f.map(x=>x.id===F._id?{...x,...data}:x));
+      show("Fournisseur modifié ✅");
+    } else {
+      setFourns(f=>[...f,{id:Date.now(),...data}]);
+      show("Fournisseur ajouté ✅");
+    }
+    closeM();
+  };
+  const delFourn=(id)=>setConfirm({msg:"Supprimer ce fournisseur ?",ok:()=>{setFourns(f=>f.filter(x=>x.id!==id));show("Fournisseur supprimé");setConfirm(null);}});
+
+  /* VENTES */
+  const saveVente=()=>{
+    if(!F.client?.trim()||!F.produit||!F.qte){show("Champs requis manquants","error");return;}
+    const prod=produits.find(p=>p.nom===F.produit);
+    const q=+F.qte;
+    if(!prod||prod.stock<q){show("Stock insuffisant — opération refusée","error");return;}
+    setProd(p=>p.map(x=>x.nom===F.produit?{...x,stock:x.stock-q}:x));
+    const montant=(prod.pv||0)*q;
+    const nv={id:Date.now(),client:F.client,date:new Date().toLocaleDateString("fr"),lignes:1,montant,statut:"En cours"};
+    setVentes(v=>[...v,nv]);
+    setMouvs(m=>[...m,{id:Date.now(),produit:F.produit,type:"SORTIE",qte:q,avant:prod.stock,apres:prod.stock-q,date:new Date().toLocaleDateString("fr")}]);
+    show(`Commande enregistrée — Stock mis à jour (${prod.stock}→${prod.stock-q}) ✅`);
+    closeM();
+  };
+  const livrer=(id)=>{setVentes(v=>v.map(x=>x.id===id?{...x,statut:"Livrée"}:x));show("Commande livrée ✅");};
+  const annVente=(id)=>setConfirm({msg:"Annuler cette commande ?",ok:()=>{setVentes(v=>v.filter(x=>x.id!==id));show("Commande annulée");setConfirm(null);}});
+
+  /* COMMANDES FOURNISSEURS */
+  const saveCmdf=()=>{
+    if(!F.fourn||!F.produit||!F.qte){show("Champs requis manquants","error");return;}
+    const montant=(+F.prix||0)*(+F.qte||0);
+    setCmdf(c=>[...c,{id:Date.now(),fourn:F.fourn,num:`CMD-${Date.now().toString().slice(-4)}`,
+      date:new Date().toLocaleDateString("fr"),dateLiv:F.dateLiv||"À définir",montant,statut:"En attente"}]);
+    show("Commande fournisseur créée ✅");closeM();
+  };
+  const validerCmd=(id)=>{setCmdf(c=>c.map(x=>x.id===id?{...x,statut:"Validée"}:x));show("Commande validée ✅");};
+  const recevoirCmd=(id)=>{
+    const cmd=cmdf.find(x=>x.id===id);
+    setCmdf(c=>c.map(x=>x.id===id?{...x,statut:"Reçue"}:x));
+    show("Commande réceptionnée — stock mis à jour ✅");
+  };
+  const annCmd=(id)=>setConfirm({msg:"Annuler cette commande ?",ok:()=>{setCmdf(c=>c.filter(x=>x.id!==id));show("Commande annulée");setConfirm(null);}});
+
+  /* MOUVEMENTS */
+  const saveMouv=(type)=>{
+    if(!F.produit||!F.qte){show("Champs requis manquants","error");return;}
+    const prod=produits.find(p=>p.nom===F.produit);
+    const q=+F.qte;
+    if(type==="SORTIE"&&prod.stock<q){show("Stock insuffisant — sortie refusée","error");return;}
+    const nv=type==="ENTREE"?prod.stock+q:prod.stock-q;
+    setProd(p=>p.map(x=>x.nom===F.produit?{...x,stock:nv}:x));
+    setMouvs(m=>[...m,{id:Date.now(),produit:F.produit,type,qte:q,avant:prod.stock,apres:nv,date:new Date().toLocaleDateString("fr")}]);
+    show(`${type==="ENTREE"?"Entrée":"Sortie"} enregistrée — Stock: ${prod.stock} → ${nv} ✅`);
+    closeM();
+  };
+
+  /* PERTES */
+  const savePerte=()=>{
+    if(!F.produit||!F.cause||!F.qte){show("Champs requis manquants","error");return;}
+    const prod=produits.find(p=>p.nom===F.produit);
+    const q=+F.qte;
+    if(prod.stock<q){show("Stock insuffisant","error");return;}
+    setProd(p=>p.map(x=>x.nom===F.produit?{...x,stock:x.stock-q}:x));
+    setPertes(p=>[...p,{id:Date.now(),produit:F.produit,cause:F.cause,qte:q,impact:+F.impact||0,date:new Date().toLocaleDateString("fr")}]);
+    show("Perte enregistrée — stock mis à jour ✅");closeM();
+  };
+  const delPerte=(id)=>setConfirm({msg:"Supprimer cet enregistrement ?",ok:()=>{setPertes(p=>p.filter(x=>x.id!==id));show("Supprimé");setConfirm(null);}});
+
+  /* ALERTES */
+  const marquerLue=(id)=>{setAlertes(a=>a.map(x=>x.id===id?{...x,lue:true}:x));show("Alerte marquée comme lue ✅");};
+  const traiter=(id)=>{setAlertes(a=>a.filter(x=>x.id!==id));show("Alerte traitée et archivée ✅");};
+
+  const titleMap={g_prod:"Gérer les produits",g_cats:"Gérer les catégories",
+    g_fourns:"Gérer les fournisseurs",g_ventes:"Commandes clients",
+    g_cmdf:"Commandes fournisseurs",g_mouvs:"Mouvements de stock",
+    g_pertes:"Enregistrer les pertes",g_alertes:"Alertes de stock"};
+
+  const content={
+    g_prod:(
+      <div>
+        {/* KPIs Produits */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
+          <KPI ic="inventory_2" label="Total produits" value={produits.length} col={P}/>
+          <KPI ic="packages" label="Stock total" value={produits.reduce((s,p)=>s+p.stock,0)} col={GR}/>
+          <KPI ic="warning" label="Stock faible" value={produits.filter(p=>p.stock<=p.seuil).length} col={OR}/>
+          <KPI ic="trending_up" label="Valeur stock" value={`${(produits.reduce((s,p)=>s+(p.pa*p.stock),0)).toLocaleString()} F`} col={P2}/>
+        </div>
+        <Card>
+          <SH title={`Produits (${produits.length})`} ic="inventory_2"
+            action={<Btn ic="add_circle" onClick={()=>{setF({});setModal("prod");}}>Ajouter un produit</Btn>}/>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <THead cols={["#","Produit","Catégorie","Prix vente","Stock","Seuil","Fournisseur","Statut","Actions"]}/>
+            <tbody>
+              {produits.map((p,i)=>{
+                const crit=p.stock<=p.seuil;
+                return <TRow key={p.id} i={i} cells={[
+                  <span style={{color:MUT,fontSize:11}}>#{p.id}</span>,
+                  <b style={{color:TXT}}>{p.nom}</b>,
+                  <Chip>{p.cat}</Chip>,
+                  <span style={{color:GR,fontWeight:700}}>{p.pv.toLocaleString()} F</span>,
+                  <b style={{color:crit?RD:GR,fontSize:14}}>{p.stock}{crit?" ⚠":""}</b>,
+                  <span style={{color:OR,fontWeight:700}}>{p.seuil}</span>,
+                  <span style={{color:MUT,fontSize:12}}>{p.fourn}</span>,
+                  crit?<Chip col={RD}>Critique</Chip>:<Chip col={GR}>OK</Chip>,
+                  <div style={{display:"flex",gap:5}}>
+                    <Btn sm ic="edit" v="ghost" onClick={()=>{setF({_id:p.id,nom:p.nom,cat:p.cat,fourn:p.fourn,pv:p.pv.toString(),pa:p.pa.toString(),stock:p.stock.toString(),seuil:p.seuil.toString()});setModal("prod");}}>Modifier</Btn>
+                    <Btn sm ic="delete" v="outline" col={RD} onClick={()=>delProd(p.id)}>Suppr.</Btn>
+                  </div>
+                ]}/>;
+              })}
+            </tbody>
+          </table>
+        </Card>
+        {modal==="prod"&&(
+          <Modal title={F._id?"Modifier le produit":"Ajouter un produit"} onClose={closeM} w={540}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <Inp label="Nom du produit" value={F.nom} set={v=>sf("nom",v)} ph="Ex: Chaussures Nike" ic="inventory" req/>
+              <Sel label="Catégorie" value={F.cat} set={v=>sf("cat",v)} opts={cats.map(c=>c.nom)} req/>
+              <Sel label="Fournisseur" value={F.fourn} set={v=>sf("fourn",v)} opts={fourns.map(f=>f.nom)} req/>
+              <Inp label="Stock actuel" value={F.stock} set={v=>sf("stock",v)} ph="0" ic="numbers"/>
+              <Inp label="Prix de vente (FCFA)" value={F.pv} set={v=>sf("pv",v)} ph="45000" ic="payments"/>
+              <Inp label="Prix d'achat (FCFA)" value={F.pa} set={v=>sf("pa",v)} ph="28000" ic="price_check"/>
+              <Inp label="Seuil d'alerte" value={F.seuil} set={v=>sf("seuil",v)} ph="20" ic="warning_amber"/>
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:8}}>
+              <Btn full ic="save" onClick={saveProd}>{F._id?"Enregistrer les modifications":"Ajouter le produit"}</Btn>
+              <Btn v="outline" onClick={closeM} style={{minWidth:90}}>Annuler</Btn>
+            </div>
+          </Modal>
+        )}
+        {confirm&&<Confirm msg={confirm.msg} onOk={confirm.ok} onCancel={()=>setConfirm(null)}/>}
+      </div>
+    ),
+    g_cats:(
+      <div>
+        {/* KPIs Catégories */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
+          <KPI ic="category" label="Total catégories" value={cats.length} col={P}/>
+          <KPI ic="inventory_2" label="Produits totaux" value={cats.reduce((s,c)=>s+c.nb,0)} col={GR}/>
+          <KPI ic="trending_up" label="Moyenne produits" value={Math.round(cats.reduce((s,c)=>s+c.nb,0)/cats.length)} col={P2}/>
+          <KPI ic="leaderboard" label="Plus grande" value={cats.reduce((max,c)=>c.nb>max.nb?c:max,cats[0])?.nom||"-"} col={OR}/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1.3fr",gap:18}}>
+          <Card>
+          <SH title={`Catégories (${cats.length})`} ic="category"
+            action={<Btn sm ic="add_circle" onClick={()=>{setF({});setModal("cat");}}>Ajouter</Btn>}/>
+          {cats.map((c)=>(
+            <div key={c.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+              padding:"11px 13px",borderRadius:11,marginBottom:8,background:BG,border:`1px solid ${BOR}`}}>
+              <div>
+                <div style={{fontSize:14,fontWeight:700,color:TXT}}>{c.nom}</div>
+                <div style={{fontSize:11,color:MUT}}>{c.desc||"—"}</div>
+              </div>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <Chip>{c.nb} produits</Chip>
+                <Btn sm ic="edit" v="ghost" onClick={()=>{setF({_id:c.id,nom:c.nom,desc:c.desc});setModal("cat");}}/>
+                <Btn sm ic="delete" v="outline" col={RD} onClick={()=>delCat(c.id)}/>
+              </div>
+            </div>
+          ))}
+        </Card>
+        <Card>
+          <SH title="Produits par catégorie" ic="bar_chart"/>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={cats.map(c=>({cat:c.nom,nb:c.nb}))} layout="vertical" margin={{top:4,right:16,left:54,bottom:0}}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={BOR}/>
+              <XAxis type="number" tick={{fontSize:10,fill:MUT}} axisLine={false} tickLine={false}/>
+              <YAxis dataKey="cat" type="category" tick={{fontSize:11,fill:TXT}} width={54} axisLine={false} tickLine={false}/>
+              <Tooltip contentStyle={{borderRadius:11,fontSize:12}}/>
+              <Bar dataKey="nb" name="Produits" fill={P} radius={[0,6,6,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+        {modal==="cat"&&(
+          <Modal title={F._id?"Modifier la catégorie":"Ajouter une catégorie"} onClose={closeM} w={400}>
+            <Inp label="Nom de la catégorie" value={F.nom} set={v=>sf("nom",v)} ph="Ex: Vêtements" ic="category" req/>
+            <Inp label="Description" value={F.desc} set={v=>sf("desc",v)} ph="Description..." ic="notes"/>
+            <div style={{display:"flex",gap:10,marginTop:8}}>
+              <Btn full ic="save" onClick={saveCat}>{F._id?"Modifier":"Ajouter"}</Btn>
+              <Btn v="outline" onClick={closeM} style={{minWidth:90}}>Annuler</Btn>
+            </div>
+          </Modal>
+        )}
+        {confirm&&<Confirm msg={confirm.msg} onOk={confirm.ok} onCancel={()=>setConfirm(null)}/>}
+        </div>
+      </div>
+    ),
+    g_fourns:(
+      <div>
+        <Card>
+          <SH title={`Fournisseurs (${fourns.length})`} ic="local_shipping"
+            action={<Btn ic="add_circle" onClick={()=>{setF({});setModal("fourn");}}>Ajouter un fournisseur</Btn>}/>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <THead cols={["#","Nom","Téléphone","Email","Adresse","Délai","Actions"]}/>
+            <tbody>
+              {fourns.map((f,i)=>(
+                <TRow key={f.id} i={i} cells={[
+                  <span style={{color:MUT,fontSize:11}}>#{f.id}</span>,
+                  <b style={{color:TXT}}>{f.nom}</b>,<span>{f.tel}</span>,
+                  <span style={{color:P,fontSize:12}}>{f.email}</span>,
+                  <span style={{color:MUT,fontSize:12}}>{f.adresse}</span>,
+                  <Chip col={GR}>{f.delai}j</Chip>,
+                  <div style={{display:"flex",gap:5}}>
+                    <Btn sm ic="edit" v="ghost" onClick={()=>{setF({_id:f.id,nom:f.nom,tel:f.tel,email:f.email,adresse:f.adresse,delai:f.delai.toString()});setModal("fourn");}}>Modifier</Btn>
+                    <Btn sm ic="delete" v="outline" col={RD} onClick={()=>delFourn(f.id)}>Suppr.</Btn>
+                  </div>
+                ]}/>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+        {modal==="fourn"&&(
+          <Modal title={F._id?"Modifier le fournisseur":"Ajouter un fournisseur"} onClose={closeM} w={500}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <Inp label="Nom" value={F.nom} set={v=>sf("nom",v)} ph="SportPro SARL" ic="business" req/>
+              <Inp label="Téléphone" value={F.tel} set={v=>sf("tel",v)} ph="21 30 12 34" ic="phone" req/>
+              <Inp label="Email" value={F.email} set={v=>sf("email",v)} ph="contact@sportpro.bj" ic="mail"/>
+              <Inp label="Délai livraison (jours)" value={F.delai} set={v=>sf("delai",v)} ph="5" ic="schedule"/>
+            </div>
+            <Inp label="Adresse" value={F.adresse} set={v=>sf("adresse",v)} ph="Cotonou, Zone Industrielle" ic="location_on"/>
+            <div style={{display:"flex",gap:10,marginTop:8}}>
+              <Btn full ic="save" onClick={saveFourn}>{F._id?"Enregistrer":"Ajouter"}</Btn>
+              <Btn v="outline" onClick={closeM} style={{minWidth:90}}>Annuler</Btn>
+            </div>
+          </Modal>
+        )}
+        {confirm&&<Confirm msg={confirm.msg} onOk={confirm.ok} onCancel={()=>setConfirm(null)}/>}
+      </div>
+    ),
+    g_ventes:(
+      <div>
+        {/* KPIs Commandes Clients */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
+          <KPI ic="shopping_cart" label="Total commandes" value={ventes.length} col={P}/>
+          <KPI ic="local_shipping" label="En cours" value={ventes.filter(v=>v.statut==="En cours").length} col={OR}/>
+          <KPI ic="check_circle" label="Livrées" value={ventes.filter(v=>v.statut==="Livrée").length} col={GR}/>
+          <KPI ic="payments" label="CA total" value={`${ventes.reduce((s,v)=>s+v.montant,0).toLocaleString()} F`} col={P2}/>
+        </div>
+        <Card>
+          <SH title={`Commandes clients (${ventes.length})`} ic="shopping_cart"
+            action={<Btn ic="add_shopping_cart" onClick={()=>{setF({});setModal("vente");}}>Nouvelle commande</Btn>}/>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <THead cols={["#","Client","Date","Lignes","Montant","Statut","Actions"]}/>
+            <tbody>
+              {[...ventes].reverse().map((v,i)=>(
+                <TRow key={v.id} i={i} cells={[
+                  <span style={{color:MUT,fontSize:11}}>#{v.id}</span>,
+                  <b style={{color:TXT}}>{v.client}</b>,
+                  <span style={{color:MUT,fontSize:11}}>{v.date}</span>,
+                  <span>{v.lignes} art.</span>,
+                  <span style={{color:GR,fontWeight:700}}>{v.montant.toLocaleString()} F</span>,
+                  <Chip col={v.statut==="Livrée"?GR:OR}>{v.statut}</Chip>,
+                  <div style={{display:"flex",gap:5}}>
+                    {v.statut==="En cours"&&<Btn sm ic="local_shipping" col={GR} onClick={()=>livrer(v.id)}>Livrer</Btn>}
+                    <Btn sm ic="cancel" v="outline" col={RD} onClick={()=>annVente(v.id)}>Annuler</Btn>
+                  </div>
+                ]}/>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+        {modal==="vente"&&(
+          <Modal title="Nouvelle commande client" onClose={closeM} w={460}>
+            <Inp label="Client" value={F.client} set={v=>sf("client",v)} ph="Nom du client" ic="person" req/>
+            <Sel label="Produit" value={F.produit} set={v=>sf("produit",v)} opts={produits.map(p=>p.nom)} req/>
+            {F.produit&&<div style={{background:P+"0A",borderRadius:10,padding:"9px 13px",marginBottom:12,fontSize:12,color:TXT}}>
+              Stock disponible : <b style={{color:GR}}>{produits.find(p=>p.nom===F.produit)?.stock||0} unités</b>
+            </div>}
+            <Inp label="Quantité" value={F.qte} set={v=>sf("qte",v)} ph="2" ic="numbers" req/>
+            {F.produit&&F.qte&&+F.qte>0&&<div style={{background:GR+"12",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:14,fontWeight:700,color:GR}}>
+              Total : {((produits.find(p=>p.nom===F.produit)?.pv||0)*(+F.qte)).toLocaleString()} FCFA
+            </div>}
+            <div style={{display:"flex",gap:10,marginTop:8}}>
+              <Btn full ic="save" onClick={saveVente}>Enregistrer la commande</Btn>
+              <Btn v="outline" onClick={closeM} style={{minWidth:90}}>Annuler</Btn>
+            </div>
+          </Modal>
+        )}
+        {confirm&&<Confirm msg={confirm.msg} onOk={confirm.ok} onCancel={()=>setConfirm(null)}/>}
+      </div>
+    ),
+    g_cmdf:(
+      <div>
+        {/* KPIs Commandes Fournisseurs */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
+          <KPI ic="receipt_long" label="Total commandes" value={cmdf.length} col={P}/>
+          <KPI ic="pending_actions" label="En attente" value={cmdf.filter(c=>c.statut==="En attente").length} col={OR}/>
+          <KPI ic="check_circle" label="Validées" value={cmdf.filter(c=>c.statut==="Validée").length} col={GR}/>
+          <KPI ic="payments" label="Montant total" value={`${cmdf.reduce((s,c)=>s+c.montant,0).toLocaleString()} F`} col={P2}/>
+        </div>
+        <Card>
+          <SH title={`Commandes fournisseurs (${cmdf.length})`} ic="receipt_long"
+            action={<Btn ic="add_circle" onClick={()=>{setF({});setModal("cmdf");}}>Nouvelle commande</Btn>}/>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <THead cols={["#","Fournisseur","N°","Date","Date liv.","Montant","Statut","Actions"]}/>
+            <tbody>
+              {[...cmdf].reverse().map((c,i)=>{
+                const sc={Validée:GR,"En attente":OR,Reçue:P,Annulée:RD};
+                return <TRow key={c.id} i={i} cells={[
+                  <span style={{color:MUT,fontSize:11}}>#{c.id}</span>,
+                  <b style={{color:TXT}}>{c.fourn}</b>,
+                  <span style={{color:P,fontSize:12}}>{c.num}</span>,
+                  <span style={{color:MUT,fontSize:11}}>{c.date}</span>,
+                  <span style={{color:MUT,fontSize:11}}>{c.dateLiv}</span>,
+                  <span style={{color:GR,fontWeight:700}}>{c.montant.toLocaleString()} F</span>,
+                  <Chip col={sc[c.statut]||MUT}>{c.statut}</Chip>,
+                  <div style={{display:"flex",gap:5}}>
+                    {c.statut==="En attente"&&<Btn sm ic="check_circle" col={GR} onClick={()=>validerCmd(c.id)}>Valider</Btn>}
+                    {c.statut==="Validée"&&<Btn sm ic="inventory" v="ghost" onClick={()=>recevoirCmd(c.id)}>Réceptionner</Btn>}
+                    {["En attente","Validée"].includes(c.statut)&&<Btn sm ic="cancel" v="outline" col={RD} onClick={()=>annCmd(c.id)}>Annuler</Btn>}
+                  </div>
+                ]}/>;
+              })}
+            </tbody>
+          </table>
+        </Card>
+        {modal==="cmdf"&&(
+          <Modal title="Nouvelle commande fournisseur" onClose={closeM} w={480}>
+            <Sel label="Fournisseur" value={F.fourn} set={v=>sf("fourn",v)} opts={fourns.map(f=>f.nom)} req/>
+            <Sel label="Produit commandé" value={F.produit} set={v=>sf("produit",v)} opts={produits.map(p=>p.nom)} req/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <Inp label="Quantité" value={F.qte} set={v=>sf("qte",v)} ph="50" ic="numbers" req/>
+              <Inp label="Prix unitaire (FCFA)" value={F.prix} set={v=>sf("prix",v)} ph="28000" ic="payments"/>
+            </div>
+            <Inp label="Date livraison prévue" value={F.dateLiv} set={v=>sf("dateLiv",v)} type="date" ic="event_available"/>
+            {F.qte&&F.prix&&+F.qte>0&&+F.prix>0&&<div style={{background:P+"0A",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:14,fontWeight:700,color:P}}>
+              Montant total : {(+F.qte * +F.prix).toLocaleString()} FCFA
+            </div>}
+            <div style={{display:"flex",gap:10,marginTop:8}}>
+              <Btn full ic="save" onClick={saveCmdf}>Créer la commande</Btn>
+              <Btn v="outline" onClick={closeM} style={{minWidth:90}}>Annuler</Btn>
+            </div>
+          </Modal>
+        )}
+        {confirm&&<Confirm msg={confirm.msg} onOk={confirm.ok} onCancel={()=>setConfirm(null)}/>}
+      </div>
+    ),
+    g_mouvs:(
+      <div>
+        <Card style={{marginBottom:18}}>
+          <SH title="Évolution des mouvements" ic="bar_chart"/>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={mouvChart} margin={{top:4,right:8,left:-22,bottom:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke={BOR} vertical={false}/>
+              <XAxis dataKey="m" tick={{fontSize:10,fill:MUT}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fontSize:10,fill:MUT}} axisLine={false} tickLine={false}/>
+              <Tooltip contentStyle={{borderRadius:11,fontSize:12}}/>
+              <Legend wrapperStyle={{fontSize:10}}/>
+              <Bar dataKey="e" name="Entrées" fill={GR} radius={[4,4,0,0]}/>
+              <Bar dataKey="s" name="Sorties" fill={P} radius={[4,4,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+        <div style={{display:"flex",gap:11,marginBottom:18}}>
+          <Btn ic="add_circle" col={GR} onClick={()=>{setF({});setModal("entree");}}>Entrée de stock</Btn>
+          <Btn ic="remove_circle" col={RD} onClick={()=>{setF({});setModal("sortie");}}>Sortie de stock</Btn>
+        </div>
+        <Card>
+          <SH title={`Historique (${mouvs.length} mouvements)`} ic="history"/>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <THead cols={["#","Produit","Type","Quantité","Stock avant","Stock après","Date"]}/>
+            <tbody>
+              {[...mouvs].reverse().map((m,i)=>(
+                <TRow key={m.id} i={i} cells={[
+                  <span style={{color:MUT,fontSize:11}}>#{m.id}</span>,
+                  <b style={{color:TXT}}>{m.produit}</b>,
+                  <Chip col={m.type==="ENTREE"?GR:RD}>{m.type}</Chip>,
+                  <b>{m.qte}</b>,<span style={{color:MUT}}>{m.avant}</span>,
+                  <b style={{color:m.type==="ENTREE"?GR:RD}}>{m.apres}</b>,
+                  <span style={{color:MUT,fontSize:11}}>{m.date}</span>
+                ]}/>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+        {(modal==="entree"||modal==="sortie")&&(
+          <Modal title={modal==="entree"?"Enregistrer une entrée":"Enregistrer une sortie"} onClose={closeM} w={440}>
+            <Sel label="Produit" value={F.produit} set={v=>sf("produit",v)} opts={produits.map(p=>p.nom)} req/>
+            {F.produit&&<div style={{background:P+"0A",borderRadius:9,padding:"8px 12px",marginBottom:12,fontSize:12,color:TXT}}>
+              Stock actuel : <b style={{color:modal==="sortie"?RD:GR}}>{produits.find(p=>p.nom===F.produit)?.stock} unités</b>
+            </div>}
+            <Inp label="Quantité" value={F.qte} set={v=>sf("qte",v)} ph="50" ic="numbers" req/>
+            {modal==="entree"&&<Sel label="Fournisseur" value={F.fourn} set={v=>sf("fourn",v)} opts={fourns.map(f=>f.nom)}/>}
+            {modal==="sortie"&&<Inp label="Client" value={F.client} set={v=>sf("client",v)} ph="Nom du client" ic="person"/>}
+            <div style={{display:"flex",gap:10,marginTop:8}}>
+              <Btn full ic="save" col={modal==="entree"?GR:RD} onClick={()=>saveMouv(modal==="entree"?"ENTREE":"SORTIE")}>
+                Enregistrer {modal==="entree"?"l'entrée":"la sortie"}
+              </Btn>
+              <Btn v="outline" onClick={closeM} style={{minWidth:90}}>Annuler</Btn>
+            </div>
+          </Modal>
+        )}
+      </div>
+    ),
+    g_pertes:(
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:18}}>
+          <KPI ic="trending_down" label="Pertes enregistrées" value={pertes.length} col={RD}/>
+          <KPI ic="payments" label="Impact total (FCFA)" value={pertes.reduce((a,p)=>a+p.impact,0).toLocaleString()} col={OR}/>
+          <KPI ic="inventory_2" label="Produits affectés" value={[...new Set(pertes.map(p=>p.produit))].length} col={P}/>
+        </div>
+        <Card>
+          <SH title={`Pertes (${pertes.length})`} ic="trending_down"
+            action={<Btn ic="add_circle" col={RD} onClick={()=>{setF({});setModal("perte");}}>Enregistrer une perte</Btn>}/>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <THead cols={["#","Produit","Cause","Quantité","Impact (FCFA)","Date","Action"]}/>
+            <tbody>
+              {[...pertes].reverse().map((p,i)=>(
+                <TRow key={p.id} i={i} cells={[
+                  <span style={{color:MUT,fontSize:11}}>#{p.id}</span>,
+                  <b style={{color:TXT}}>{p.produit}</b>,
+                  <Chip col={RD}>{p.cause}</Chip>,
+                  <b style={{color:RD}}>{p.qte}</b>,
+                  <span style={{color:OR,fontWeight:700}}>{p.impact.toLocaleString()}</span>,
+                  <span style={{color:MUT,fontSize:11}}>{p.date}</span>,
+                  <Btn sm ic="delete" v="outline" col={RD} onClick={()=>delPerte(p.id)}>Suppr.</Btn>
+                ]}/>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+        {modal==="perte"&&(
+          <Modal title="Enregistrer une perte" onClose={closeM} w={460}>
+            <Sel label="Produit" value={F.produit} set={v=>sf("produit",v)} opts={produits.map(p=>p.nom)} req/>
+            {F.produit&&<div style={{background:RD+"0A",borderRadius:9,padding:"8px 12px",marginBottom:12,fontSize:12,color:TXT}}>
+              Stock actuel : <b style={{color:RD}}>{produits.find(p=>p.nom===F.produit)?.stock} unités</b>
+            </div>}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <Inp label="Quantité perdue" value={F.qte} set={v=>sf("qte",v)} ph="5" ic="numbers" req/>
+              <Inp label="Impact financier (FCFA)" value={F.impact} set={v=>sf("impact",v)} ph="25000" ic="payments"/>
+            </div>
+            <Sel label="Cause" value={F.cause} set={v=>sf("cause",v)}
+              opts={["Produit endommagé","Périmé / Expiré","Vol","Erreur inventaire","Autre"]} req/>
+            <Inp label="Conseil de prévention" value={F.conseil} set={v=>sf("conseil",v)} ph="Ex: Améliorer le stockage..." ic="lightbulb"/>
+            <div style={{display:"flex",gap:10,marginTop:8}}>
+              <Btn full ic="save" col={RD} onClick={savePerte}>Enregistrer la perte</Btn>
+              <Btn v="outline" onClick={closeM} style={{minWidth:90}}>Annuler</Btn>
+            </div>
+          </Modal>
+        )}
+        {confirm&&<Confirm msg={confirm.msg} onOk={confirm.ok} onCancel={()=>setConfirm(null)}/>}
+      </div>
+    ),
+    g_alertes:(
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:18}}>
+          <KPI ic="dangerous" label="Non lues" value={alertes.filter(a=>!a.lue).length} col={RD}/>
+          <KPI ic="warning" label="Total alertes" value={alertes.length} col={OR}/>
+          <KPI ic="check_circle" label="Traitées" value={8} col={GR}/>
+          <KPI ic="inventory_2" label="Produits sous seuil" value={produits.filter(p=>p.stock<=p.seuil).length} col={P}/>
+        </div>
+        <Card>
+          <SH title="Alertes actives" ic="notifications_active"
+            action={<Btn sm ic="done_all" v="ghost" onClick={()=>{setAlertes(a=>a.map(x=>({...x,lue:true})));show("Toutes les alertes marquées comme lues ✅");}}>Tout marquer lu</Btn>}/>
+          {alertes.length===0&&<div style={{textAlign:"center",padding:"28px 0",color:MUT,fontSize:13}}>✅ Aucune alerte active</div>}
+          {alertes.map(a=>(
+            <div key={a.id} style={{
+              display:"flex",alignItems:"center",justifyContent:"space-between",
+              padding:"13px 15px",borderRadius:13,marginBottom:10,
+              background:a.lue?BG:a.col+"0A",border:`1.5px solid ${a.lue?BOR:a.col+"33"}`,
+            }}>
+              <div style={{display:"flex",alignItems:"center",gap:13}}>
+                <div style={{width:44,height:44,borderRadius:13,background:a.col+"18",
+                  display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <Ic n={a.ic} s={21} c={a.col}/>
+                </div>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:TXT}}>{a.produit}</div>
+                  <div style={{fontSize:12,color:MUT}}>{a.type}</div>
+                  <div style={{fontSize:11,color:MUT}}>Stock: <b style={{color:TXT}}>{a.stock}</b> / Seuil: <b style={{color:TXT}}>{a.seuil}</b> — {a.date}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:7,alignItems:"center"}}>
+                {!a.lue&&<Chip col={a.col}>Non lue</Chip>}
+                {!a.lue&&<Btn sm ic="visibility" v="outline" col={a.col} onClick={()=>marquerLue(a.id)}>Marquer lue</Btn>}
+                <Btn sm ic="done" col={GR} onClick={()=>traiter(a.id)}>Traiter</Btn>
+              </div>
+            </div>
+          ))}
+        </Card>
+      </div>
+    ),
+  };
+
+  return (
+    <Layout page={pg} setPage={setPg} role="gestionnaire" logout={logout} menus={menus}
+      title={titleMap[pg]} sub="Espace Gestionnaire de stock" toast={toast}
+      searchQuery={searchQuery} setSearchQuery={setSearchQuery} 
+      showNotifications={showNotifications} setShowNotifications={setShowNotifications}>
+      {content[pg]}
+    </Layout>
+  );
+};
+
+/* ════════════════════════════════════════
+   ESPACE GÉRANT
+════════════════════════════════════════ */
+const GERANT_M=[
+  {id:"r_dash",icon:"dashboard",label:"Tableau de bord"},
+  {id:"r_prev",icon:"insights",label:"Prévisions"},
+  {id:"r_rapp",icon:"bar_chart",label:"Rapports"},
+  {id:"r_recom",icon:"shopping_bag",label:"Recommandations"},
+  {id:"r_alert",icon:"notifications",label:"Alertes",badge:2},
+];
+
+const GerantApp=({logout})=>{
+  const [pg,setPg]=useState("r_dash");
+  const [toast,show]=useToast();
+  const [searchQuery,setSearchQuery]=useState("");
+  const [showNotifications,setShowNotifications]=useState(false);
+  const [recs,setRecs]=useState([
+    {id:1,produit:"T-shirt coton",qte:50,justif:"Rupture imminente + hausse",dl:"03/04",prio:"URGENTE",col:RD,statut:"attente"},
+    {id:2,produit:"Sac à main cuir",qte:22,justif:"Stock faible + hausse saisonnière",dl:"05/04",prio:"HAUTE",col:OR,statut:"attente"},
+    {id:3,produit:"Chaussures Nike",qte:48,justif:"Prévision +40 u. (87%)",dl:"10/04",prio:"NORMALE",col:P,statut:"attente"},
+    {id:4,produit:"Robe wax",qte:30,justif:"Planifier pour fin Avril",dl:"20/04",prio:"BASSE",col:GR,statut:"attente"},
+  ]);
+  const valRec=(id)=>{setRecs(r=>r.map(x=>x.id===id?{...x,statut:"validee"}:x));show("Recommandation validée");};
+  const ignRec=(id)=>{setRecs(r=>r.map(x=>x.id===id?{...x,statut:"ignoree"}:x));show("Recommandation ignorée");};
+
+  const titleMap={r_dash:"Tableau de bord",r_prev:"Prévisions",r_rapp:"Rapports",r_recom:"Recommandations d'achat",r_alert:"Alertes"};
+
+  const content={
+    r_dash:(
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14,marginBottom:20}}>
+          <KPI ic="inventory_2" label="Total produits" value="24" col={P} trend="+5%" up/>
+          <KPI ic="dangerous" label="Ruptures" value="2" col={RD}/>
+          <KPI ic="warning" label="Stock faible" value="5" col={OR}/>
+          <KPI ic="local_shipping" label="Fournisseurs" value="6" col={GR}/>
+          <KPI ic="payments" label="Valeur stock" value="4.2M F" col={P2}/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1.5fr 1fr",gap:18,marginBottom:18}}>
+          <Card>
+            <SH title="Évolution du stock — 6 mois" ic="bar_chart"/>
+            <ResponsiveContainer width="100%" height={190}>
+              <AreaChart data={mouvChart} margin={{top:4,right:8,left:-22,bottom:0}}>
+                <defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={P} stopOpacity={.15}/><stop offset="95%" stopColor={P} stopOpacity={0}/>
+                </linearGradient></defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={BOR} vertical={false}/>
+                <XAxis dataKey="m" tick={{fontSize:10,fill:MUT}} axisLine={false} tickLine={false}/>
+                <YAxis tick={{fontSize:10,fill:MUT}} axisLine={false} tickLine={false}/>
+                <Tooltip contentStyle={{borderRadius:11,fontSize:12}}/>
+                <Legend wrapperStyle={{fontSize:10}}/>
+                <Area type="monotone" dataKey="e" name="Entrées" stroke={P} strokeWidth={2} fill="url(#gg)"/>
+                <Area type="monotone" dataKey="s" name="Sorties" stroke={OR} strokeWidth={2} fill="none"/>
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
+          <Card>
+            <SH title="Répartition stock" ic="pie_chart"/>
+            <ResponsiveContainer width="100%" height={190}>
+              <PieChart>
+                <Pie data={stockChart} cx="50%" cy="44%" innerRadius={46} outerRadius={76}
+                  dataKey="value" nameKey="name" paddingAngle={3}>
+                  {stockChart.map((d,i)=><Cell key={i} fill={d.color}/>)}
+                </Pie>
+                <Tooltip contentStyle={{borderRadius:11,fontSize:12}}/>
+                <Legend wrapperStyle={{fontSize:10}}/>
+              </PieChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:18}}>
+          <Card>
+            <SH title="Alertes récentes (lecture seule)" ic="notifications_active" action={<Chip col={RD}>3 actives</Chip>}/>
+            {D_ALERTES.map((a,i)=>(
+              <div key={a.id} style={{display:"flex",alignItems:"center",gap:11,padding:"10px 0",
+                borderBottom:i<D_ALERTES.length-1?`1px solid ${BOR}`:undefined}}>
+                <div style={{width:36,height:36,borderRadius:10,background:a.col+"18",
+                  display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <Ic n={a.ic} s={17} c={a.col}/>
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:700,color:TXT}}>{a.produit}</div>
+                  <div style={{fontSize:11,color:MUT}}>{a.type} — {a.stock}/{a.seuil}</div>
+                </div>
+                <Chip col={a.col}>{a.col===RD?"CRITIQUE":"FAIBLE"}</Chip>
+              </div>
+            ))}
+          </Card>
+          <Card>
+            <SH title="Recommandations en attente" ic="shopping_bag"
+              action={<Chip col={OR}>{recs.filter(r=>r.statut==="attente").length} en attente</Chip>}/>
+            {recs.filter(r=>r.statut==="attente").slice(0,3).map((r,i)=>(
+              <div key={r.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                padding:"10px 0",borderBottom:i<2?`1px solid ${BOR}`:undefined}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:TXT}}>{r.produit}</div>
+                  <div style={{fontSize:11,color:MUT}}>{r.qte} unités — {r.prio}</div>
+                </div>
+                <div style={{display:"flex",gap:6}}>
+                  <Btn sm ic="check" col={GR} onClick={()=>valRec(r.id)}>Valider</Btn>
+                  <Btn sm ic="close" v="outline" col={MUT} onClick={()=>ignRec(r.id)}>Ignorer</Btn>
+                </div>
+              </div>
+            ))}
+          </Card>
+        </div>
+      </div>
+    ),
+    r_prev:(
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:18}}>
+          <KPI ic="trending_up" label="En hausse" value="2" col={GR}/>
+          <KPI ic="trending_flat" label="Stables" value="1" col={P}/>
+          <KPI ic="trending_down" label="En baisse" value="1" col={RD}/>
+        </div>
+        <Card style={{marginBottom:18}}>
+          <SH title="Ventes réelles vs Prévisions" ic="insights"/>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={prevChart} margin={{top:4,right:18,left:-10,bottom:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke={BOR} vertical={false}/>
+              <XAxis dataKey="m" tick={{fontSize:10,fill:MUT}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fontSize:10,fill:MUT}} axisLine={false} tickLine={false}/>
+              <Tooltip contentStyle={{borderRadius:11,fontSize:12}}/>
+              <Legend wrapperStyle={{fontSize:11}}/>
+              <Line type="monotone" dataKey="reel" name="Ventes réelles" stroke={P} strokeWidth={3} dot={{r:4,fill:P}} connectNulls={false}/>
+              <Line type="monotone" dataKey="prev" name="Prévisions" stroke={OR} strokeWidth={3} strokeDasharray="5 3" dot={{r:4,fill:OR}} connectNulls={false}/>
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+        <Card>
+          <SH title="Prévisions par produit — Avril 2026" ic="list_alt"/>
+          {[{p:"Chaussures Nike",q:40,t:"hausse",f:87},{p:"Robe wax",q:25,t:"stable",f:72},
+            {p:"T-shirt coton",q:35,t:"baisse",f:65},{p:"Sac à main cuir",q:18,t:"hausse",f:80}].map((item,i)=>{
+            const col=item.t==="hausse"?GR:item.t==="stable"?P:RD;
+            return <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+              padding:"13px 14px",borderRadius:12,marginBottom:9,background:BG,border:`1px solid ${BOR}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <Ic n={item.t==="hausse"?"trending_up":item.t==="stable"?"trending_flat":"trending_down"} s={24} c={col}/>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:TXT}}>{item.p}</div>
+                  <div style={{fontSize:11,color:MUT}}>Méthode : Moyenne Mobile Simple · Fiabilité {item.f}%</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:16,alignItems:"center"}}>
+                <div style={{textAlign:"center"}}><div style={{fontSize:20,fontWeight:800,color:col}}>{item.q}</div><div style={{fontSize:10,color:MUT}}>unités prévues</div></div>
+                <Chip col={col}>{item.t.toUpperCase()}</Chip>
+              </div>
+            </div>;
+          })}
+        </Card>
+      </div>
+    ),
+    r_rapp:(
+      <div>
+        <Card style={{marginBottom:20}}>
+          <SH title="Valeur du stock par catégorie" ic="bar_chart"/>
+          <ResponsiveContainer width="100%" height={190}>
+            <BarChart data={[{cat:"Vêtements",v:980},{cat:"Chaussures",v:2380},{cat:"Accessoires",v:596},{cat:"Montres",v:260}]}
+              margin={{top:4,right:14,left:10,bottom:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke={BOR} vertical={false}/>
+              <XAxis dataKey="cat" tick={{fontSize:11,fill:MUT}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fontSize:10,fill:MUT}} axisLine={false} tickLine={false}/>
+              <Tooltip contentStyle={{borderRadius:11,fontSize:12}} formatter={v=>`${v} 000 F`}/>
+              <Bar dataKey="v" name="Valeur (k FCFA)" fill={P} radius={[5,5,0,0]}/>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+          {[{ic:"inventory_2",t:"Rapport de stock",c:P},{ic:"swap_horiz",t:"Rapport mouvements",c:GR},
+            {ic:"receipt_long",t:"Rapport commandes",c:P2},{ic:"notifications_active",t:"Rapport alertes",c:RD},
+            {ic:"insights",t:"Rapport prévisions",c:OR},{ic:"payments",t:"Rapport financier",c:"#6AD2FF"}].map((r,i)=>(
+            <Card key={i} style={{borderTop:`3px solid ${r.c}`,cursor:"pointer"}}>
+              <div style={{width:44,height:44,borderRadius:11,background:r.c+"18",
+                display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12}}>
+                <Ic n={r.ic} s={21} c={r.c}/>
+              </div>
+              <div style={{fontSize:14,fontWeight:800,color:TXT,marginBottom:13}}>{r.t}</div>
+              <div style={{display:"flex",gap:7}}>
+                <Btn sm ic="picture_as_pdf" col={r.c} onClick={()=>show(`${r.t} PDF généré ✅`)}>PDF</Btn>
+                <Btn sm ic="table_chart" v="outline" col={r.c} onClick={()=>show(`${r.t} Excel exporté ✅`)}>Excel</Btn>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    ),
+    r_recom:(
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:18}}>
+          <KPI ic="bolt" label="En attente" value={recs.filter(r=>r.statut==="attente").length} col={OR}/>
+          <KPI ic="check_circle" label="Validées" value={recs.filter(r=>r.statut==="validee").length} col={GR}/>
+          <KPI ic="do_not_disturb" label="Ignorées" value={recs.filter(r=>r.statut==="ignoree").length} col={RD}/>
+          <KPI ic="local_fire_department" label="Urgentes" value={recs.filter(r=>r.prio==="URGENTE"&&r.statut==="attente").length} col={RD}/>
+        </div>
+        <Card>
+          <SH title="Recommandations d'achat" ic="shopping_bag"/>
+          {recs.map(r=>(
+            <div key={r.id} style={{
+              display:"flex",justifyContent:"space-between",alignItems:"center",
+              padding:"13px 15px",borderRadius:13,marginBottom:9,
+              background:r.statut!=="attente"?BG:r.col+"0A",
+              border:`1px solid ${r.statut!=="attente"?BOR:r.col+"33"}`,
+              opacity:r.statut!=="attente"?.6:1,
+            }}>
+              <div style={{display:"flex",alignItems:"center",gap:13}}>
+                <div style={{width:42,height:42,borderRadius:11,background:r.col+"18",
+                  display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <Ic n="lightbulb" s={20} c={r.col}/>
+                </div>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:TXT}}>{r.produit}</div>
+                  <div style={{fontSize:12,color:MUT}}>{r.justif}</div>
+                  <div style={{fontSize:11,color:MUT}}>⏰ Date limite : <b style={{color:TXT}}>{r.dl}</b></div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <div style={{textAlign:"center",minWidth:55}}><div style={{fontSize:20,fontWeight:800,color:r.col}}>{r.qte}</div><div style={{fontSize:10,color:MUT}}>unités</div></div>
+                <Chip col={r.col}>Priorité {r.prio}</Chip>
+                {r.statut==="attente"&&<><Btn sm ic="check_circle" col={GR} onClick={()=>valRec(r.id)}>Valider</Btn><Btn sm ic="close" v="outline" col={MUT} onClick={()=>ignRec(r.id)}>Ignorer</Btn></>}
+                {r.statut==="validee"&&<Chip col={GR}>✓ Validée</Chip>}
+                {r.statut==="ignoree"&&<Chip col={RD}>✗ Ignorée</Chip>}
+              </div>
+            </div>
+          ))}
+        </Card>
+      </div>
+    ),
+    r_alert:(
+      <div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:18}}>
+          <KPI ic="dangerous" label="Ruptures imminentes" value="1" col={RD}/>
+          <KPI ic="warning" label="Stocks faibles" value="3" col={OR}/>
+          <KPI ic="notifications_off" label="Non lues" value="3" col={P}/>
+          <KPI ic="check_circle" label="Traitées ce mois" value="8" col={GR}/>
+        </div>
+        <Card>
+          <SH title="Alertes — Lecture seule" ic="notifications_active" action={<Chip col={OR}>👁 Lecture seule</Chip>}/>
+          {D_ALERTES.map(a=>(
+            <div key={a.id} style={{display:"flex",alignItems:"center",padding:"13px 15px",
+              borderRadius:13,marginBottom:9,background:BG,border:`1px solid ${BOR}`}}>
+              <div style={{width:44,height:44,borderRadius:13,background:a.col+"18",
+                display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginRight:13}}>
+                <Ic n={a.ic} s={20} c={a.col}/>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:700,color:TXT}}>{a.produit}</div>
+                <div style={{fontSize:12,color:MUT}}>{a.type}</div>
+                <div style={{fontSize:11,color:MUT}}>Stock: <b style={{color:TXT}}>{a.stock}</b> / Seuil: <b style={{color:TXT}}>{a.seuil}</b> — {a.date}</div>
+              </div>
+              <Chip col={a.col}>{a.col===RD?"CRITIQUE":"FAIBLE"}</Chip>
+            </div>
+          ))}
+        </Card>
+      </div>
+    ),
+  };
+
+  return (
+    <Layout page={pg} setPage={setPg} role="gerant" logout={logout} menus={GERANT_M}
+      title={titleMap[pg]} sub="Espace Gérant - Supervision & décision" toast={toast}
+      searchQuery={searchQuery} setSearchQuery={setSearchQuery} 
+      showNotifications={showNotifications} setShowNotifications={setShowNotifications}>
+      {content[pg]}
+    </Layout>
+  );
+};
+
+/* ════════════════════════════════════════
+   APP PRINCIPALE
+════════════════════════════════════════ */
+export default function App() {
+  const [screen,setScreen]=useState("login");
+  const [role,setRole]=useState(null);
+
+  // Injection des fonts
+  if(!document.getElementById("mi")){
+    const l=document.createElement("link");l.id="mi";l.rel="stylesheet";
+    l.href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap";
+    document.head.appendChild(l);
+  }
+
+  const login=(r)=>{setRole(r);setScreen("app");};
+  const logout=()=>{setRole(null);setScreen("login");};
+
+  if(screen==="login")    return <LoginPage goReg={()=>setScreen("register")} onLogin={login}/>;
+  if(screen==="register") return <RegisterPage goLogin={()=>setScreen("login")}/>;
+  if(role==="admin")        return <AdminApp logout={logout}/>;
+  if(role==="gestionnaire") return <GestApp  logout={logout}/>;
+  if(role==="gerant")       return <GerantApp logout={logout}/>;
+  return null;
+}

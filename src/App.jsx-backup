@@ -1,0 +1,464 @@
+import React, { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+
+/* Design System Components */
+const Card = ({ children, style = {}, p = 20 }) => (
+  <div className="card" style={{ padding: p, ...style }}>
+    {children}
+  </div>
+)
+
+const Btn = ({ children, onClick, variant = "fill", color = "var(--primary)", full, small, icon }) => (
+  <button 
+    onClick={onClick} 
+    className={`btn ${variant === "outline" ? "btn-outline" : variant === "secondary" ? "btn-secondary" : ""} ${full ? "btn-full" : ""} ${small ? "btn-small" : ""}`}
+    style={{ background: variant === "fill" ? color : variant === "outline" ? "transparent" : "var(--primary3)" }}
+  >
+    {icon && <span className="material-symbols-rounded" style={{ fontSize: 16 }}>{icon}</span>}
+    {children}
+  </button>
+)
+
+const Input = ({ label, placeholder, type = "text", icon, hint, dark }) => (
+  <div style={{ marginBottom: 18 }}>
+    {label && <div style={{ fontSize: 13, fontWeight: 600, color: dark ? "#fff" : "var(--text)", marginBottom: 7 }}>{label}</div>}
+    <div className={icon ? "input-with-icon" : ""}>
+      {icon && <div className="input-icon">
+        <span className="material-symbols-rounded" style={{ fontSize: 18 }}>{icon}</span>
+      </div>}
+      <input 
+        placeholder={placeholder} 
+        type={type} 
+        className="input-field"
+        style={{ 
+          paddingLeft: icon ? 42 : 16,
+          background: dark ? "rgba(255,255,255,0.07)" : "var(--white)",
+          color: dark ? "#fff" : "var(--text)",
+          border: `1.5px solid ${dark ? "rgba(255,255,255,0.15)" : "var(--border)"}`
+        }}
+      />
+    </div>
+    {hint && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>{hint}</div>}
+  </div>
+)
+
+const Select = ({ label, opts = [] }) => (
+  <div style={{ marginBottom: 18 }}>
+    {label && <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 7 }}>{label}</div>}
+    <select className="select-field">
+      {opts.map(o => <option key={o}>{o}</option>)}
+    </select>
+  </div>
+)
+
+const Chip = ({ children, color = "var(--primary)", bg }) => (
+  <span className="chip" style={{ background: bg || color + "18", color }}>
+    {children}
+  </span>
+)
+
+const KPI = ({ icon, label, value, color = "var(--primary)", sub, trend, trendUp }) => (
+  <div className="kpi-card">
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+      <div className="kpi-icon" style={{ background: color + "18" }}>
+        <span className="material-symbols-rounded" style={{ fontSize: 22, color }}>{icon}</span>
+      </div>
+      {trend && (
+        <span style={{ 
+          fontSize: 11, fontWeight: 700, color: trendUp ? "var(--green)" : "var(--red)",
+          background: trendUp ? "var(--greenL)" : "var(--redL)", borderRadius: 6, padding: "3px 7px" 
+        }}>
+          {trendUp ? "arrow_upward" : "arrow_downward"} {trend}
+        </span>
+      )}
+    </div>
+    <div className="kpi-value">{value}</div>
+    <div className="kpi-label">{label}</div>
+    {sub && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{sub}</div>}
+  </div>
+)
+
+/* Navigation Pages */
+const PAGES = [
+  { id: "login", icon: null, label: "Connexion" },
+  { id: "register", icon: null, label: "Inscription" },
+  { id: "dashboard", icon: "dashboard", label: "Tableau de bord" },
+  { id: "produits", icon: "inventory", label: "Produits" },
+  { id: "categories", icon: "category", label: "Catégories" },
+  { id: "fournisseurs", icon: "local_shipping", label: "Fournisseurs" },
+  { id: "cmdClient", icon: "shopping_cart", label: "Commandes clients" },
+  { id: "cmdFourn", icon: "receipt_long", label: "Gestion commandes" },
+  { id: "mouvements", icon: "swap_horiz", label: "Mouvements" },
+  { id: "pertes", icon: "trending_down", label: "Pertes" },
+  { id: "alertes", icon: "notifications", label: "Alertes", badge: 3 },
+  { id: "previsions", icon: "insights", label: "Prévisions" },
+  { id: "rapports", icon: "bar_chart", label: "Rapports" },
+  { id: "utilisateurs", icon: "group", label: "Utilisateurs" },
+  { id: "roles", icon: "admin_panel_settings", label: "Rôles & Accès" },
+  { id: "entreprise", icon: "business", label: "Entreprise" },
+];
+
+/* Icon Component */
+const Icon = ({ name, size = 20, color = "inherit", style = {} }) => (
+  <span className="material-symbols-rounded" style={{
+    fontSize: size, color, lineHeight: 1,
+    fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+    ...style
+  }}>{name}</span>
+);
+
+/* Sidebar Component */
+const Sidebar = ({ active, set }) => {
+  const nav = PAGES.filter(p => !["login", "register"].includes(p.id));
+  
+  return (
+    <div className="sidebar">
+      {/* Logo */}
+      <div className="sidebar-logo">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="sidebar-logo-icon">
+            <Icon name="inventory_2" size={20} color="#fff"/>
+          </div>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: "#fff" }}>Inventaire</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,.6)" }}>PME SYSTÈME</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="sidebar-nav">
+        {nav.map(m => {
+          const on = active === m.id;
+          return (
+            <div key={m.id} onClick={() => set(m.id)} className={`sidebar-nav-item ${on ? "active" : ""}`}>
+              {m.icon && <Icon name={m.icon} size={18} />}
+              <span className="sidebar-nav-text">{m.label}</span>
+              {m.badge && <span style={{ background: "var(--red)", color: "#fff", borderRadius: 8,
+                fontSize: 10, fontWeight: 800, padding: "1px 7px" }}>{m.badge}</span>}
+            </div>
+          );
+        })}
+      </nav>
+
+      {/* User */}
+      <div className="sidebar-user">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="sidebar-user-avatar">A</div>
+          <div style={{ flex: 1, color: "#fff" }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Administrateur</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,.6)" }}>admin@pme.bj</div>
+          </div>
+          <Icon name="logout" size={18} color="rgba(255,255,255,.6)"/>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* Topbar Component */
+const Topbar = ({ title, sub }) => (
+  <div className="topbar">
+    <div>
+      <div className="topbar-title">{title}</div>
+      {sub && <div className="topbar-subtitle">{sub}</div>}
+    </div>
+    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      {/* Search */}
+      <div className="topbar-search">
+        <Icon name="search" size={16} />
+        <span className="topbar-search-text">Rechercher...</span>
+      </div>
+      {/* Bell */}
+      <div className="topbar-bell">
+        <Icon name="notifications" size={18} />
+        <div className="topbar-bell-dot"></div>
+      </div>
+      {/* Avatar */}
+      <div className="topbar-avatar">A</div>
+    </div>
+  </div>
+);
+
+/* Layout Component */
+const Layout = ({ active, set, title, sub, children }) => (
+  <div className="layout">
+    <Sidebar active={active} set={set} />
+    <div className="layout-main">
+      <Topbar title={title} sub={sub} />
+      <main className="layout-content">{children}</main>
+    </div>
+  </div>
+);
+
+/* Login Page */
+const LoginPage = ({ go }) => (
+  <div className="auth-container">
+    {/* Left Panel */}
+    <div className="auth-left-panel">
+      <div className="auth-circle auth-circle-1"></div>
+      <div className="auth-circle auth-circle-2"></div>
+      <div className="auth-circle auth-circle-3"></div>
+
+      <div style={{ textAlign: "center", zIndex: 1 }}>
+        <div className="auth-logo">
+          <Icon name="inventory_2" size={46} color="#fff"/>
+        </div>
+        <div className="auth-title">Gestion</div>
+        <div className="auth-subtitle">Inventaire</div>
+        <div className="auth-description">Plateforme intelligente pour PME</div>
+
+        <div style={{ marginTop: 48, display: "flex", flexDirection: "column", gap: 16, textAlign: "left" }}>
+          {[
+            ["inventory", "Gestion des stocks en temps réel"],
+            ["notifications_active", "Alertes automatiques intelligentes"],
+            ["insights", "Prévisions et aide à la décision"],
+          ].map(([ic, txt]) => (
+            <div key={ic} className="auth-feature">
+              <div className="auth-feature-icon">
+                <Icon name={ic} size={18} color="#fff"/>
+              </div>
+              <span className="auth-feature-text">{txt}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* Right Panel */}
+    <div className="auth-right-panel">
+      <div style={{ width: "100%", maxWidth: 400 }}>
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ fontSize: 28, fontWeight: 900, color: "var(--text)", marginBottom: 8 }}>Se connecter</div>
+          <div style={{ fontSize: 14, color: "var(--muted)" }}>Entrez votre email et mot de passe</div>
+        </div>
+
+        <Input label="Email*" placeholder="mail@example.com" icon="mail"/>
+        <Input label="Mot de passe*" placeholder="Min. 8 caractères" type="password" icon="lock"/>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+          marginBottom: 20, marginTop: -8 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13,
+            color: "var(--muted)", cursor: "pointer" }}>
+            <div style={{ width: 16, height: 16, borderRadius: 4, background: "var(--primary)",
+              display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="check" size={12} color="#fff"/>
+            </div>
+            Rester connecté
+          </label>
+          <span style={{ fontSize: 13, color: "var(--primary)", fontWeight: 700, cursor: "pointer" }}>
+            Mot de passe oublié ?
+          </span>
+        </div>
+
+        <Btn full onClick={() => go("dashboard")}>Se connecter</Btn>
+
+        <div style={{ textAlign: "center", marginTop: 20, fontSize: 14, color: "var(--muted)" }}>
+          Pas encore de compte ?{" "}
+          <span onClick={() => go("register")} style={{ color: "var(--primary)", fontWeight: 700, cursor: "pointer" }}>
+            S'inscrire
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+/* Register Page */
+const RegisterPage = ({ go }) => (
+  <div className="auth-container">
+    {/* Left Panel */}
+    <div className="auth-left-panel">
+      <div className="auth-circle auth-circle-1"></div>
+      <div className="auth-circle auth-circle-2"></div>
+      <div className="auth-circle auth-circle-3"></div>
+
+      <div style={{ textAlign: "center", zIndex: 1 }}>
+        <div className="auth-logo">
+          <Icon name="inventory_2" size={46} color="#fff"/>
+        </div>
+        <div className="auth-title">Créer votre</div>
+        <div className="auth-subtitle">compte</div>
+        <div className="auth-description">Rejoignez notre plateforme de gestion</div>
+
+        <div style={{ marginTop: 48, display: "flex", flexDirection: "column", gap: 16, textAlign: "left" }}>
+          {[
+            ["speed", "Interface rapide et intuitive"],
+            ["security", "Sécurité des données garantie"],
+            ["cloud_done", "Accès depuis n'importe où"],
+          ].map(([ic, txt]) => (
+            <div key={ic} className="auth-feature">
+              <div className="auth-feature-icon">
+                <Icon name={ic} size={18} color="#fff"/>
+              </div>
+              <span className="auth-feature-text">{txt}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* Right Panel */}
+    <div className="auth-right-panel">
+      <div style={{ width: "100%", maxWidth: 400 }}>
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ fontSize: 28, fontWeight: 900, color: "var(--text)", marginBottom: 8 }}>S'inscrire</div>
+          <div style={{ fontSize: 14, color: "var(--muted)" }}>Créez votre compte gratuitement</div>
+        </div>
+
+        <Input label="Nom complet*" placeholder="Jean Dupont" icon="person"/>
+        <Input label="Email*" placeholder="mail@example.com" icon="mail"/>
+        <Input label="Mot de passe*" placeholder="Min. 8 caractères" type="password" icon="lock"/>
+        <Input label="Confirmer le mot de passe*" placeholder="Répétez le mot de passe" type="password" icon="lock"/>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13,
+          color: "var(--muted)", cursor: "pointer", marginBottom: 20 }}>
+          <div style={{ width: 16, height: 16, borderRadius: 4, background: "var(--primary)",
+            display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon name="check" size={12} color="#fff"/>
+          </div>
+          J'accepte les conditions d'utilisation et la politique de confidentialité
+        </div>
+
+        <Btn full onClick={() => go("dashboard")}>S'inscrire</Btn>
+
+        <div style={{ textAlign: "center", marginTop: 20, fontSize: 14, color: "var(--muted)" }}>
+          Déjà un compte ?{" "}
+          <span onClick={() => go("login")} style={{ color: "var(--primary)", fontWeight: 700, cursor: "pointer" }}>
+            Se connecter
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+/* Dashboard Page */
+const DashboardPage = ({ go }) => {
+  const mouvData = [
+    { m: "Oct", e: 420, s: 280 },
+    { m: "Nov", e: 380, s: 310 },
+    { m: "Déc", e: 510, s: 390 },
+    { m: "Jan", e: 340, s: 260 },
+    { m: "Fév", e: 480, s: 350 },
+    { m: "Mar", e: 410, s: 290 },
+  ];
+
+  const stockData = [
+    { name: "Chaussures", value: 85, color: "var(--primary)" },
+    { name: "Vêtements", value: 65, color: "var(--accent)" },
+    { name: "Accessoires", value: 45, color: "var(--green)" },
+    { name: "Électronique", value: 35, color: "var(--orange)" },
+  ];
+
+  return (
+    <Layout active="dashboard" set={go} title="Tableau de bord" sub="Vue d'ensemble de votre inventaire">
+      {/* KPI Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 20, marginBottom: 28 }}>
+        <KPI icon="inventory" label="Produits en stock" value="1,234" trend="+12%" trendUp={true} />
+        <KPI icon="trending_up" label="Ventes du mois" value="45,678" trend="+8%" trendUp={true} />
+        <KPI icon="notifications" label="Alertes actives" value="23" trend="-5%" trendUp={false} />
+        <KPI icon="shopping_cart" label="Commandes en cours" value="156" trend="+2%" trendUp={true} />
+      </div>
+
+      {/* Charts Section */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 28 }}>
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>Évolution des mouvements</div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>Entrées et sorties sur 6 mois</div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Btn small variant="secondary">6 mois</Btn>
+              <Btn small variant="secondary">1 an</Btn>
+            </div>
+          </div>
+          
+          {/* Simple Bar Chart */}
+          <div style={{ height: 200, display: "flex", alignItems: "end", justifyContent: "space-between", padding: "0 10px" }}>
+            {mouvData.map((item, i) => (
+              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, flex: 1 }}>
+                <div style={{ display: "flex", gap: 4, alignItems: "end" }}>
+                  <div style={{ width: 20, background: "var(--green)", borderRadius: 4, height: `${(item.e / 510) * 100}%`, minWidth: 4 }} />
+                  <div style={{ width: 20, background: "var(--red)", borderRadius: 4, height: `${(item.s / 510) * 100}%`, minWidth: 4 }} />
+                </div>
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>{item.m}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>Répartition du stock</div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>Par catégorie</div>
+            </div>
+            <Btn small variant="secondary">Détails</Btn>
+          </div>
+          
+          {/* Simple Pie Chart */}
+          <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 150, height: 150, borderRadius: "50%", background: `conic-gradient(
+              var(--primary) 0deg ${85 * 3.6}deg,
+              var(--accent) ${85 * 3.6}deg ${(85 + 65) * 3.6}deg,
+              var(--green) ${(85 + 65) * 3.6}deg ${(85 + 65 + 45) * 3.6}deg,
+              var(--orange) ${(85 + 65 + 45) * 3.6}deg 360deg
+            )` }}></div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Recent Activities */}
+      <Card>
+        <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginBottom: 20 }}>Activités récentes</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {[
+            { icon: "inventory", text: "Nouveau produit ajouté", time: "Il y a 2h", color: "var(--green)" },
+            { icon: "shopping_cart", text: "Commande client #1234", time: "Il y a 4h", color: "var(--primary)" },
+            { icon: "trending_down", text: "Perte enregistrée", time: "Il y a 6h", color: "var(--red)" },
+          ].map((activity, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: "var(--bg)", borderRadius: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: activity.color + "18", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon name={activity.icon} size={18} color={activity.color} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{activity.text}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{activity.time}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </Layout>
+  );
+};
+
+/* Main App Component */
+function App() {
+  const [currentPage, setCurrentPage] = useState('login');
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'login':
+        return <LoginPage go={setCurrentPage} />;
+      case 'register':
+        return <RegisterPage go={setCurrentPage} />;
+      case 'dashboard':
+        return <DashboardPage go={setCurrentPage} />;
+      default:
+        return <LoginPage go={setCurrentPage} />;
+    }
+  };
+
+  return (
+    <Router>
+      <div style={{ fontFamily: "'DM Sans', 'Nunito', system-ui, sans-serif" }}>
+        {renderPage()}
+      </div>
+    </Router>
+  );
+}
+
+export default App;
